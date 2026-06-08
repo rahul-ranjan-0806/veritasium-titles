@@ -6,6 +6,8 @@ Veritasium / 3Blue1Brown-style text animation components. Three classes, no buil
 - **`WordAnimation`** — word and character entrance animations. Zero dependencies.
 - **`Handwriting`** — centerline pen-stroke handwriting. Powered by Vara.js.
 
+**[→ Live React Demo](https://rahul-ranjan-0806.github.io/veritasium-titles/demo.html)** — configure all three animations in the browser, see the equivalent code update live.
+
 ---
 
 ## Installation
@@ -242,7 +244,12 @@ export function HandwritingText({ lines, ...opts }) {
 
 ## Demo
 
-Open `index.html` in any browser — no server required. Adjust text and controls live, then hit **Replay**.
+| Link | What it is |
+|---|---|
+| [React Demo](https://rahul-ranjan-0806.github.io/veritasium-titles/demo.html) | Interactive React prototype — tweak every option, live code snippet updates |
+| [Full Studio](https://rahul-ranjan-0806.github.io/veritasium-titles/) | All 7 animation modes including handwriting & word animations |
+
+Or open `index.html` locally in any browser — no server required.
 
 ## Files
 
@@ -254,7 +261,8 @@ motion-titles/
 │   └── Handwriting.js     importable class
 ├── index.js               re-exports all three
 ├── package.json
-├── index.html             interactive demo / playground
+├── demo.html              React demo (also served via GitHub Pages)
+├── index.html             full animation studio (local)
 ├── stroke-fill.html       standalone stroke-fill demo
 └── handwriting.html       standalone handwriting demo
 ```

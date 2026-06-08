@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>motion-titles — Live Demo</title>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "react":            "https://esm.sh/react@18",
+      "react-dom/client": "https://esm.sh/react-dom@18/client",
+      "htm/react":        "https://esm.sh/htm/react"
+    }
+  }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+
+    :root {
+      --bg:       #0b0d10;
+      --panel:    #14171c;
+      --line:     #22272f;
+      --ink:      #f0f2f5;
+      --muted:    #6b7584;
+      --accent:   #ffd34e;
+      --accent2:  #4ad7d4;
+      --radius:   6px;
+      --font:     -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--ink); font-family: var(--font) }
+
+    #app { min-height: 100%; display: flex; flex-direction: column }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .header {
+      display: flex; align-items: center; gap: 20px;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+    .header-title {
+      font-size: 13px; font-weight: 600; letter-spacing: .04em;
+      color: var(--ink);
+      text-decoration: none;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .header-title span { color: var(--muted); font-weight: 400 }
+    .tabs { display: flex; gap: 2px; flex: 1 }
+    .tab {
+      background: none; border: none; cursor: pointer;
+      font: 13px var(--font); color: var(--muted);
+      padding: 6px 14px; border-radius: var(--radius);
+      transition: color .15s, background .15s;
+    }
+    .tab:hover  { color: var(--ink) }
+    .tab.active { color: var(--ink); background: var(--line) }
+    .gh-link {
+      font-size: 12px; color: var(--muted); text-decoration: none;
+      padding: 5px 10px; border: 1px solid var(--line); border-radius: var(--radius);
+      transition: color .15s, border-color .15s;
+    }
+    .gh-link:hover { color: var(--ink); border-color: var(--muted) }
+
+    /* ── Layout ──────────────────────────────────────────────── */
+    .demo { flex: 1; display: grid; grid-template-rows: 1fr auto; min-height: 0 }
+
+    /* ── Stage ───────────────────────────────────────────────── */
+    .stage-wrap {
+      position: relative; display: flex; align-items: center; justify-content: center;
+      padding: 60px 32px;
+      background: var(--bg);
+    }
+    .stage {
+      width: min(820px, 100%);
+      display: flex; flex-direction: column; align-items: center; gap: 0;
+    }
+    .replay-btn {
+      position: absolute; bottom: 20px; right: 28px;
+      background: var(--line); border: none; cursor: pointer;
+      color: var(--muted); font: 12px var(--font);
+      padding: 6px 14px; border-radius: var(--radius);
+      transition: color .15s, background .15s;
+      letter-spacing: .04em;
+    }
+    .replay-btn:hover { color: var(--ink); background: #2a2f38 }
+
+    /* ── Controls panel ──────────────────────────────────────── */
+    .panel {
+      background: var(--panel);
+      border-top: 1px solid var(--line);
+      padding: 18px 24px 20px;
+      display: grid; gap: 16px;
+    }
+    .ctrl-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: end }
+    .ctrl { display: flex; flex-direction: column; gap: 5px; min-width: 80px }
+    .ctrl.wide { min-width: 200px; flex: 1 }
+    .ctrl label { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted) }
+    .ctrl input[type=range] { width: 100%; accent-color: var(--accent) }
+    .ctrl select, .ctrl input[type=text], .ctrl textarea {
+      background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+      color: var(--ink); font: 12px var(--font); padding: 5px 8px;
+      outline: none;
+    }
+    .ctrl select:focus, .ctrl input[type=text]:focus, .ctrl textarea:focus {
+      border-color: var(--muted);
+    }
+    .ctrl textarea { resize: vertical; min-height: 54px; line-height: 1.5 }
+    .ctrl input[type=color] {
+      width: 34px; height: 28px; padding: 1px 2px;
+      background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+      cursor: pointer;
+    }
+    .ctrl-val { font-size: 11px; color: var(--muted); margin-top: 1px }
+
+    /* ── Code snippet ────────────────────────────────────────── */
+    .snippet {
+      background: #0d1117; border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 12px 16px; overflow-x: auto;
+      font: 12px/1.6 'SF Mono', 'Fira Code', monospace;
+    }
+    .snippet .kw  { color: #ff7b72 }
+    .snippet .fn  { color: #d2a8ff }
+    .snippet .str { color: #a5d6ff }
+    .snippet .num { color: #79c0ff }
+    .snippet .key { color: var(--ink) }
+    .snippet .cm  { color: var(--muted) }
+
+    /* ── Loading / error ─────────────────────────────────────── */
+    .loading {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 13px; gap: 10px;
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--line); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg) } }
+
+    /* ── StrokeFill stage sizing ─────────────────────────────── */
+    .sf-stage { width: 100%; text-align: center }
+    .sf-stage > div { display: flex; flex-direction: column; align-items: center }
+
+    /* ── WordAnim stage ──────────────────────────────────────── */
+    .wa-stage {
+      text-align: center;
+      font-weight: 900;
+      font-size: clamp(36px, 7vw, 96px);
+      line-height: 1.05;
+      letter-spacing: -.02em;
+    }
+
+    /* ── Handwriting stage ───────────────────────────────────── */
+    .hw-stage { width: min(760px, 100%); min-height: 180px }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { createRoot } from 'react-dom/client'
+import html from 'htm/react'
+
+const CDN = 'https://cdn.jsdelivr.net/gh/rahul-ranjan-0806/veritasium-titles@main/src/'
+let StrokeFill, WordAnimation, Handwriting
+
+const loadComponents = Promise.all([
+  import(CDN + 'StrokeFill.js'),
+  import(CDN + 'WordAnimation.js'),
+  import(CDN + 'Handwriting.js'),
+]).then(([sf, wa, hw]) => {
+  StrokeFill    = sf.StrokeFill
+  WordAnimation = wa.WordAnimation
+  Handwriting   = hw.Handwriting
+})
+
+// ── Root ─────────────────────────────────────────────────────────────────────
+
+function App() {
+  const [tab,   setTab]   = useState('stroke')
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => { loadComponents.then(() => setReady(true)) }, [])
+
+  return html`
+    <div id="app">
+      <header class="header">
+        <a href="." class="header-title">
+          motion-titles <span>/ demo</span>
+        </a>
+        <nav class="tabs">
+          ${['stroke','word','hw'].map(t => html`
+            <button key=${t} class=${'tab' + (tab === t ? ' active' : '')}
+              onClick=${() => setTab(t)}>
+              ${{ stroke: 'Stroke & Fill', word: 'Word', hw: 'Handwriting' }[t]}
+            </button>
+          `)}
+        </nav>
+        <a class="gh-link"
+          href="https://github.com/rahul-ranjan-0806/veritasium-titles"
+          target="_blank" rel="noopener">GitHub ↗</a>
+      </header>
+
+      ${!ready
+        ? html`<div class="loading"><div class="spinner"></div> Loading components…</div>`
+        : html`
+          <div class="demo">
+            ${tab === 'stroke' && html`<${StrokeDemo} />`}
+            ${tab === 'word'   && html`<${WordDemo}   />`}
+            ${tab === 'hw'     && html`<${HWDemo}     />`}
+          </div>
+        `
+      }
+    </div>
+  `
+}
+
+// ── StrokeDemo ────────────────────────────────────────────────────────────────
+
+function StrokeDemo() {
+  const BG = '#0b0d10'
+  const [cfg, setCfg] = useState({
+    lines:       'The universe has no obligation\nto make sense to you',
+    font:        'fraunces',
+    weight:      100,
+    strokeColor: '#ffd34e',
+    fillColor:   '#f0f2f5',
+    strokeWidth: 1,
+    speed:       560,
+    fillDelay:   0,
+  })
+
+  const stageRef = useRef(null)
+  const animRef  = useRef(null)
+  const tick     = useRef(0)
+
+  const play = useCallback(() => {
+    if (!stageRef.current) return
+    animRef.current?.destroy()
+    animRef.current = new StrokeFill(stageRef.current, {
+      lines:        cfg.lines.split('\n').filter(Boolean),
+      font:         cfg.font,
+      weight:       cfg.weight,
+      strokeColor:  cfg.strokeColor,
+      fillColor:    cfg.fillColor,
+      strokeWidth:  cfg.strokeWidth,
+      speed:        cfg.speed,
+      fillDelay:    cfg.fillDelay,
+      background:   BG,
+    })
+    animRef.current.play()
+  }, [cfg])
+
+  useEffect(() => { play() }, [play])
+  useEffect(() => () => animRef.current?.destroy(), [])
+
+  const set = (k, v) => setCfg(c => ({ ...c, [k]: v }))
+
+  const codeLines = cfg.lines.split('\n').filter(Boolean)
+    .map(l => `    '${l}'`).join(',\n')
+
+  return html`
+    <div class="stage-wrap">
+      <div class="sf-stage stage" ref=${stageRef}></div>
+      <button class="replay-btn" onClick=${play}>↺ Replay</button>
+    </div>
+
+    <div class="panel">
+      <div class="ctrl-row">
+        <div class="ctrl wide">
+          <label>Text (one line per row)</label>
+          <textarea rows="3"
+            value=${cfg.lines}
+            onInput=${e => set('lines', e.target.value)}
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="ctrl-row">
+        <div class="ctrl">
+          <label>Font</label>
+          <select value=${cfg.font} onChange=${e => set('font', e.target.value)}>
+            <option value="fraunces">Fraunces</option>
+            <option value="roboto">Roboto</option>
+            <option value="fira">Fira Sans</option>
+            <option value="abril">Abril Fatface</option>
+          </select>
+        </div>
+
+        <div class="ctrl">
+          <label>Weight — ${cfg.weight}</label>
+          <input type="range" min="100" max="900" step="100"
+            value=${cfg.weight} onInput=${e => set('weight', +e.target.value)} />
+        </div>
+
+        <div class="ctrl">
+          <label>Stroke px — ${cfg.strokeWidth}</label>
+          <input type="range" min="0.5" max="4" step="0.5"
+            value=${cfg.strokeWidth} onInput=${e => set('strokeWidth', +e.target.value)} />
+        </div>
+
+        <div class="ctrl">
+          <label>Speed px/s — ${cfg.speed}</label>
+          <input type="range" min="80" max="2000" step="40"
+            value=${cfg.speed} onInput=${e => set('speed', +e.target.value)} />
+        </div>
+
+        <div class="ctrl">
+          <label>Fill delay ms — ${cfg.fillDelay}</label>
+          <input type="range" min="-600" max="1200" step="50"
+            value=${cfg.fillDelay} onInput=${e => set('fillDelay', +e.target.value)} />
+        </div>
+
+        <div class="ctrl">
+          <label>Stroke color</label>
+          <input type="color" value=${cfg.strokeColor}
+            onInput=${e => set('strokeColor', e.target.value)} />
+        </div>
+
+        <div class="ctrl">
+          <label>Fill color</label>
+          <input type="color" value=${cfg.fillColor}
+            onInput=${e => set('fillColor', e.target.value)} />
+        </div>
+      </div>
+
+      <pre class="snippet">${html`<code
+><span class="kw">import</span> <span class="fn">{ StrokeFill }</span> <span class="kw">from</span> <span class="str">'motion-titles'</span>
+
+<span class="kw">new</span> <span class="fn">StrokeFill</span>(<span class="str">'#container'</span>, {
+  lines:       [
+${codeLines}
+  ],
+  font:        <span class="str">'${cfg.font}'</span>,
+  weight:      <span class="num">${cfg.weight}</span>,
+  strokeColor: <span class="str">'${cfg.strokeColor}'</span>,
+  fillColor:   <span class="str">'${cfg.fillColor}'</span>,
+  strokeWidth: <span class="num">${cfg.strokeWidth}</span>,
+  speed:       <span class="num">${cfg.speed}</span>,
+  fillDelay:   <span class="num">${cfg.fillDelay}</span>,
+  background:  <span class="str">'${BG}'</span>,  <span class="cm">// match your container background</span>
+}).<span class="fn">play</span>()</code>`}</pre>
+    </div>
+  `
+}
+
+// ── WordDemo ──────────────────────────────────────────────────────────────────
+
+function WordDemo() {
+  const [cfg, setCfg] = useState({
+    text:      'The speed of *light* is the universe\'s speed limit',
+    preset:    'wordFadeUp',
+    stagger:   55,
+    duration:  700,
+    highlight: '#ffd34e',
+  })
+
+  const stageRef = useRef(null)
+  const animRef  = useRef(null)
+
+  const play = useCallback(() => {
+    if (!stageRef.current) return
+    animRef.current?.destroy()
+    animRef.current = new WordAnimation(stageRef.current, {
+      text:      cfg.text,
+      preset:    cfg.preset,
+      stagger:   cfg.stagger,
+      duration:  cfg.duration,
+      highlight: cfg.highlight,
+    })
+    animRef.current.play()
+  }, [cfg])
+
+  useEffect(() => { play() }, [play])
+  useEffect(() => () => animRef.current?.destroy(), [])
+
+  const set = (k, v) => setCfg(c => ({ ...c, [k]: v }))
+
+  return html`
+    <div class="stage-wrap">
+      <div class="wa-stage stage" ref=${stageRef}></div>
+      <button class="replay-btn" onClick=${play}>↺ Replay</button>
+    </div>
+
+    <div class="panel">
+      <div class="ctrl-row">
+        <div class="ctrl wide">
+          <label>Text — wrap words in *asterisks* to highlight</label>
+          <input type="text" value=${cfg.text}
+            onInput=${e => set('text', e.target.value)} />
+        </div>
+      </div>
+
+      <div class="ctrl-row">
+        <div class="ctrl">
+          <label>Preset</label>
+          <select value=${cfg.preset} onChange=${e => set('preset', e.target.value)}>
+            <option value="wordFadeUp">wordFadeUp</option>
+            <option value="blurIn">blurIn</option>
+            <option value="maskReveal">maskReveal</option>
+            <option value="charPop">charPop</option>
+            <option value="typeSlide">typeSlide</option>
+          </select>
+        </div>
+
+        <div class="ctrl">
+          <label>Stagger ms — ${cfg.stagger}</label>
+          <input type="range" min="10" max="300" step="5"
+            value=${cfg.stagger} onInput=${e => set('stagger', +e.target.value)} />
+        </div>
+
+        <div class="ctrl">
+          <label>Duration ms — ${cfg.duration}</label>
+          <input type="range" min="100" max="2000" step="50"
+            value=${cfg.duration} onInput=${e => set('duration', +e.target.value)} />
+        </div>
+
+        <div class="ctrl">
+          <label>Highlight color</label>
+          <input type="color" value=${cfg.highlight}
+            onInput=${e => set('highlight', e.target.value)} />
+        </div>
+      </div>
+
+      <pre class="snippet">${html`<code
+><span class="kw">import</span> <span class="fn">{ WordAnimation }</span> <span class="kw">from</span> <span class="str">'motion-titles'</span>
+
+<span class="kw">new</span> <span class="fn">WordAnimation</span>(<span class="str">'#container'</span>, {
+  text:      <span class="str">'${cfg.text.replace(/'/g, "\\'")}'</span>,
+  preset:    <span class="str">'${cfg.preset}'</span>,
+  stagger:   <span class="num">${cfg.stagger}</span>,
+  duration:  <span class="num">${cfg.duration}</span>,
+  highlight: <span class="str">'${cfg.highlight}'</span>,
+}).<span class="fn">play</span>()</code>`}</pre>
+    </div>
+  `
+}
+
+// ── HWDemo ────────────────────────────────────────────────────────────────────
+
+function HWDemo() {
+  const [cfg, setCfg] = useState({
+    lines:       'why is the sky blue?',
+    font:        'satisfy',
+    color:       '#ffd34e',
+    fontSize:    96,
+    strokeWidth: 2,
+    duration:    1600,
+  })
+
+  const stageRef = useRef(null)
+  const animRef  = useRef(null)
+
+  const play = useCallback(() => {
+    if (!stageRef.current) return
+    animRef.current?.destroy()
+    animRef.current = new Handwriting(stageRef.current, {
+      lines:       cfg.lines.split('\n').filter(Boolean),
+      font:        cfg.font,
+      color:       cfg.color,
+      fontSize:    cfg.fontSize,
+      strokeWidth: cfg.strokeWidth,
+      duration:    cfg.duration,
+      textAlign:   'center',
+    })
+    animRef.current.play()
+  }, [cfg])
+
+  useEffect(() => { play() }, [play])
+  useEffect(() => () => animRef.current?.destroy(), [])
+
+  const set = (k, v) => setCfg(c => ({ ...c, [k]: v }))
+
+  const codeLines = cfg.lines.split('\n').filter(Boolean)
+    .map(l => `    '${l}'`).join(',\n')
+
+  return html`
+    <div class="stage-wrap">
+      <div class="hw-stage stage" ref=${stageRef}></div>
+      <button class="replay-btn" onClick=${play}>↺ Replay</button>
+    </div>
+
+    <div class="panel">
+      <div class="ctrl-row">
+        <div class="ctrl wide">
+          <label>Lines (one per row)</label>
+          <textarea rows="2"
+            value=${cfg.lines}
+            onInput=${e => set('lines', e.target.value)}
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="ctrl-row">
+        <div class="ctrl">
+          <label>Font</label>
+          <select value=${cfg.font} onChange=${e => set('font', e.target.value)}>
+            <option value="satisfy">Satisfy</option>
+            <option value="pacifico">Pacifico</option>
+            <option value="parisienne">Parisienne</option>
+            <option value="shadows">Shadows Into Light</option>
+          </select>
+        </div>
+
+        <div class="ctrl">
+          <label>Font size — ${cfg.fontSize}px</label>
+          <input type="range" min="32" max="160" step="4"
+            value=${cfg.fontSize} onInput=${e => set('fontSize', +e.target.value)} />
+        </div>
+
+        <div class="ctrl">
+          <label>Stroke width — ${cfg.strokeWidth}px</label>
+          <input type="range" min="0.5" max="5" step="0.5"
+            value=${cfg.strokeWidth} onInput=${e => set('strokeWidth', +e.target.value)} />
+        </div>
+
+        <div class="ctrl">
+          <label>Duration ms — ${cfg.duration}</label>
+          <input type="range" min="400" max="5000" step="100"
+            value=${cfg.duration} onInput=${e => set('duration', +e.target.value)} />
+        </div>
+
+        <div class="ctrl">
+          <label>Color</label>
+          <input type="color" value=${cfg.color}
+            onInput=${e => set('color', e.target.value)} />
+        </div>
+      </div>
+
+      <pre class="snippet">${html`<code
+><span class="kw">import</span> <span class="fn">{ Handwriting }</span> <span class="kw">from</span> <span class="str">'motion-titles'</span>
+
+<span class="kw">new</span> <span class="fn">Handwriting</span>(<span class="str">'#container'</span>, {
+  lines:       [
+${codeLines}
+  ],
+  font:        <span class="str">'${cfg.font}'</span>,
+  color:       <span class="str">'${cfg.color}'</span>,
+  fontSize:    <span class="num">${cfg.fontSize}</span>,
+  strokeWidth: <span class="num">${cfg.strokeWidth}</span>,
+  duration:    <span class="num">${cfg.duration}</span>,
+  textAlign:   <span class="str">'center'</span>,
+}).<span class="fn">play</span>()</code>`}</pre>
+    </div>
+  `
+}
+
+// ── Mount ─────────────────────────────────────────────────────────────────────
+
+createRoot(document.getElementById('app')).render(html`<${App} />`)
+</script>
+</body>
+</html>
