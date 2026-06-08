@@ -1,0 +1,39 @@
+{
+  "name": "motion-titles",
+  "version": "1.0.0",
+  "description": "Veritasium / 3Blue1Brown-style text animation components. Stroke & fill, word entrances, handwriting.",
+  "type": "module",
+  "main": "index.js",
+  "module": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./StrokeFill": "./src/StrokeFill.js",
+    "./WordAnimation": "./src/WordAnimation.js",
+    "./Handwriting": "./src/Handwriting.js"
+  },
+  "files": [
+    "src/",
+    "index.js"
+  ],
+  "keywords": [
+    "animation",
+    "text-animation",
+    "svg",
+    "stroke",
+    "motion",
+    "veritasium",
+    "3b1b",
+    "opentype",
+    "handwriting"
+  ],
+  "author": "rahul-ranjan-0806",
+  "license": "MIT",
+  "peerDependencies": {
+    "opentype.js": "^1.3.4"
+  },
+  "peerDependenciesMeta": {
+    "opentype.js": {
+      "optional": true
+    }
+  }
+}

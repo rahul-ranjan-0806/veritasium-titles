@@ -1,91 +1,264 @@
-# Motion Titles
+# motion-titles
 
-Veritasium / 3Blue1Brown-style text animation studio. Seven animations, zero build steps — open `index.html` in any browser.
+Veritasium / 3Blue1Brown-style text animation components. Three classes, no build step required.
 
-## Animations
+- **`StrokeFill`** — SVG contour stroke that fills in. Powered by opentype.js.
+- **`WordAnimation`** — word and character entrance animations. Zero dependencies.
+- **`Handwriting`** — centerline pen-stroke handwriting. Powered by Vara.js.
 
-| Mode | Technique | Dependencies |
-|---|---|---|
-| **Stroke & Fill** | opentype.js glyph paths → SVG `stroke-dashoffset` → CSS fill transition | opentype.js |
-| **Word Fade Up** | Web Animations API, `translateY` + `blur` | none |
-| **Blur In** | Web Animations API, `scale` + `blur` | none |
-| **Mask Slide Up** | Web Animations API, `overflow:hidden` clip | none |
-| **Char Spring Pop** | Web Animations API, per-character `scale` with `outBack` easing | none |
-| **Word Slide In** | Web Animations API, `translateX` | none |
-| **Handwriting** | Vara.js centerline stroke paths, `stroke-dashoffset` | Vara.js |
+---
 
-## Usage
+## Installation
 
-### As a standalone tool
-
-```
-open index.html
+```bash
+npm install motion-titles
 ```
 
-No server required. Adjust text and controls, hit **Replay**.
+Or via CDN (no install):
 
-### Stroke & Fill — embedding in a project
+```html
+<script type="module">
+  import { StrokeFill } from 'https://cdn.jsdelivr.net/gh/rahul-ranjan-0806/veritasium-titles@main/src/StrokeFill.js'
+</script>
+```
 
-The core of the stroke+fill animation is ~120 lines of vanilla JS. Copy the following functions from `index.html` or `stroke-fill.html` into your project:
+---
+
+## StrokeFill
+
+Each letter's contour is drawn simultaneously from its bottommost point, then the fill fades in across the whole phrase.
+
+### Usage
 
 ```js
-// 1. Load opentype.js (CDN or npm install opentype.js)
-// 2. Copy: resolveWeight, loadFont, rotatePathToBottom, commandsToD,
-//          animateAllStrokes, buildLineSVG
-// 3. Call:
-const font = await loadFont('fraunces', 100);
-const { svg, glyphPaths } = buildLineSVG(font, 'Hello', 72, 1, '#ffd34e', '#0b0d10');
-document.body.appendChild(svg);
+import { StrokeFill } from 'motion-titles'
 
-const lengths = glyphPaths.map(p => p.getTotalLength());
-const dur     = (Math.max(...lengths) / 560) * 1000; // 560 px/s pen speed
-animateAllStrokes(glyphPaths, dur, lengths);
+const anim = new StrokeFill('#hero', {
+  lines:        ['The universe has no obligation', 'to make sense to you'],
+  font:         'fraunces',   // 'fraunces' | 'roboto' | 'fira' | 'abril'
+  weight:       100,          // 100–900, snapped to nearest available
+  fontSize:     72,
+  strokeColor:  '#ffd34e',
+  fillColor:    '#f4f6f8',
+  strokeWidth:  1,
+  speed:        560,          // px/s — controls how fast the pen travels
+  fillDelay:    0,            // ms after strokes end before fill fades in
+  fillDuration: 400,          // ms for the fill fade
+  background:   '#0b0d10',   // must match your container's background color
+  onComplete:   () => console.log('done'),
+})
 
-setTimeout(() => {
-  glyphPaths.forEach(p => {
-    p.style.transition = 'fill 400ms ease-out';
-    p.style.fill = '#f4f6f8';
-  });
-}, dur);
+await anim.play()  // returns a Promise
+anim.destroy()     // remove SVGs and cancel timers
 ```
 
-### Word animations — embedding in a project
+### Options
 
-Copy `splitText` and `WORD_PRESETS` from `index.html`. Each preset is a plain Web Animations API call — no GSAP, no dependencies.
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `lines` | `string[]` | `['Hello World']` | Each string renders as one SVG line |
+| `font` | `string` | `'fraunces'` | Built-in: `'fraunces'` `'roboto'` `'fira'` `'abril'` |
+| `weight` | `number` | `100` | CSS font weight, snapped to nearest available for the font |
+| `fontSize` | `number` | `72` | px |
+| `strokeColor` | `string` | `'#ffd34e'` | Stroke colour during animation |
+| `fillColor` | `string` | `'#f4f6f8'` | Final letter fill colour |
+| `strokeWidth` | `number` | `1` | px |
+| `speed` | `number` | `560` | Pen speed in px/s. Duration = longest glyph path ÷ speed. |
+| `fillDelay` | `number` | `0` | ms to wait after strokes finish before fill fades in |
+| `fillDuration` | `number` | `400` | ms for the fill fade transition |
+| `background` | `string` | `'#000000'` | **Must match your container's background.** Used to mask interior path segments during the stroke phase. |
+| `onComplete` | `function` | `null` | Called after fill has fully faded in |
+
+### How the background option works
+
+During the stroke phase, each letter's `fill` is set to `background` (same color as the container). Combined with `paint-order: stroke fill`, the fill layer sits on top of the stroke, masking any interior path segments — so only the outer contour of each letter is visible. Once strokes finish the fill transitions to `fillColor`. If `background` doesn't match your actual background, you'll see colored rectangles behind the letters.
+
+### React
+
+```jsx
+import { useEffect, useRef } from 'react'
+import { StrokeFill } from 'motion-titles'
+
+export function StrokeFillText({ lines, ...opts }) {
+  const ref  = useRef(null)
+  const anim = useRef(null)
+
+  useEffect(() => {
+    anim.current = new StrokeFill(ref.current, { lines, ...opts })
+    anim.current.play()
+    return () => anim.current.destroy()
+  }, [lines, JSON.stringify(opts)])
+
+  return <div ref={ref} />
+}
+
+// Usage:
+<StrokeFillText
+  lines={['The universe has', 'no obligation']}
+  font="fraunces"
+  weight={100}
+  strokeColor="#ffd34e"
+  background="#0b0d10"
+/>
+```
+
+---
+
+## WordAnimation
+
+Word and character entrance animations using the Web Animations API. No dependencies.
+Wrap words in `*asterisks*` to highlight them.
+
+### Usage
 
 ```js
-const tokens = splitText('The speed of *light*', 'word');
-tokens.forEach((tok, i) =>
-  tok.animate(WORD_PRESETS.wordFadeUp.frames(), {
-    duration: 700,
-    delay: i * 55,
-    easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-    fill: 'both',
-  })
-);
+import { WordAnimation } from 'motion-titles'
+
+const anim = new WordAnimation('#hero', {
+  text:       'The speed of *light* is the universe\'s speed limit',
+  preset:     'wordFadeUp',  // see presets below
+  stagger:    55,            // ms between each token
+  duration:   700,           // ms per token animation
+  highlight:  '#ffd34e',     // color for *highlighted* words
+  onComplete: () => console.log('done'),
+})
+
+await anim.play()
+anim.destroy()
 ```
+
+### Presets
+
+| Preset | Description |
+|---|---|
+| `wordFadeUp` | Words float up with a blur fade. Classic Veritasium look. |
+| `blurIn` | Words zoom in from a scaled-up blur. |
+| `maskReveal` | Words slide up from behind a clip mask. Editorial style. |
+| `charPop` | Each character springs in individually with an overshoot. |
+| `typeSlide` | Words slide in from the left. |
+
+### Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `text` | `string` | `'Hello World'` | Wrap words in `*asterisks*` to apply the highlight color |
+| `preset` | `string` | `'wordFadeUp'` | See presets table above |
+| `stagger` | `number` | `55` | ms delay between each word or character |
+| `duration` | `number` | `700` | ms per token animation |
+| `highlight` | `string` | `'#ffd34e'` | Color applied to `*highlighted*` words |
+| `onComplete` | `function` | `null` | Called after all tokens finish |
+
+### React
+
+```jsx
+import { useEffect, useRef } from 'react'
+import { WordAnimation } from 'motion-titles'
+
+export function WordAnim({ text, preset = 'wordFadeUp', ...opts }) {
+  const ref  = useRef(null)
+  const anim = useRef(null)
+
+  useEffect(() => {
+    anim.current = new WordAnimation(ref.current, { text, preset, ...opts })
+    anim.current.play()
+    return () => anim.current.destroy()
+  }, [text, preset, JSON.stringify(opts)])
+
+  return (
+    <div ref={ref} style={{ fontWeight: 900, fontSize: 'clamp(40px, 8vw, 120px)', lineHeight: 1.05 }} />
+  )
+}
+```
+
+---
+
+## Handwriting
+
+Centerline pen-stroke handwriting animation. Each glyph's path draws with `stroke-dashoffset`. Powered by Vara.js (auto-loaded from CDN if not present).
+
+### Usage
+
+```js
+import { Handwriting } from 'motion-titles'
+
+const anim = new Handwriting('#hero', {
+  lines:       ['why is the sky blue?'],
+  font:        'satisfy',     // see fonts below
+  color:       '#ffd34e',
+  fontSize:    96,
+  strokeWidth: 2,
+  duration:    1600,          // ms per line
+  textAlign:   'center',
+  onComplete:  () => console.log('done'),
+})
+
+await anim.play()
+anim.destroy()
+```
+
+### Fonts
+
+| Key | Style |
+|---|---|
+| `satisfy` | Fluid signature |
+| `pacifico` | Rounded casual |
+| `parisienne` | Fine calligraphy |
+| `shadows` | Printed hand |
+
+### Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `lines` | `string[]` | `['Hello World']` | Each string animates as a separate SVG line |
+| `font` | `string` | `'satisfy'` | See fonts table above |
+| `color` | `string` | `'#f4f6f8'` | Stroke color |
+| `fontSize` | `number` | `96` | px |
+| `strokeWidth` | `number` | `2` | px |
+| `duration` | `number` | `1600` | ms per line |
+| `textAlign` | `string` | `'center'` | `'left'` `'center'` `'right'` |
+| `onComplete` | `function` | `null` | Called after all lines finish |
+
+### React
+
+```jsx
+import { useEffect, useRef } from 'react'
+import { Handwriting } from 'motion-titles'
+
+export function HandwritingText({ lines, ...opts }) {
+  const ref  = useRef(null)
+  const anim = useRef(null)
+
+  useEffect(() => {
+    anim.current = new Handwriting(ref.current, { lines, ...opts })
+    anim.current.play()
+    return () => anim.current.destroy()
+  }, [lines, JSON.stringify(opts)])
+
+  return <div ref={ref} style={{ width: 'min(90vw, 900px)' }} />
+}
+```
+
+---
+
+## Demo
+
+Open `index.html` in any browser — no server required. Adjust text and controls live, then hit **Replay**.
 
 ## Files
 
-| File | Purpose |
-|---|---|
-| `index.html` | Unified animation studio — all 7 modes in one UI |
-| `stroke-fill.html` | Standalone stroke & fill component |
-| `handwriting.html` | Standalone handwriting component |
+```
+motion-titles/
+├── src/
+│   ├── StrokeFill.js      importable class
+│   ├── WordAnimation.js   importable class
+│   └── Handwriting.js     importable class
+├── index.js               re-exports all three
+├── package.json
+├── index.html             interactive demo / playground
+├── stroke-fill.html       standalone stroke-fill demo
+└── handwriting.html       standalone handwriting demo
+```
 
-## How Stroke & Fill works
+## License
 
-1. **Font loading** — opentype.js fetches a per-weight `.ttf` from Google Fonts CDN. Fonts cache after first load; only the default (Fraunces 100) loads on startup.
-2. **Path rotation** — each glyph's subpaths are rotated so `M` starts at the bottommost point, making the stroke animation begin at the base of every letter.
-3. **Single path per glyph** — fill and stroke share one `<path>` element. `paint-order: stroke fill` renders the stroke underneath the fill. During animation `fill = bgColor` masks all interior path segments — only the outer edge of the stroke is visible.
-4. **CSS transition animation** — `stroke-dashoffset` animates from `pathLength → 0` via a CSS `transition: linear`. All paths start in one synchronous JS block so the browser batches them as one composited animation.
-5. **Fill reveal** — after a configurable delay a single `setTimeout` transitions all glyphs from `bgColor → fillColor` simultaneously.
-
-## Dependencies
-
-| Library | Version | Used for |
-|---|---|---|
-| [opentype.js](https://github.com/opentypejs/opentype.js) | 1.3.4 | Font parsing and glyph path extraction |
-| [Vara.js](https://github.com/akzhy/Vara) | 1.4.1 | Handwriting centerline stroke animation |
-
-All loaded from CDN — no `npm install` needed.
+MIT
