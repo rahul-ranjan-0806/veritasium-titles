@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Motion Titles — Animation Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="font" crossorigin="anonymous"
+  href="https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIctxqjDg.ttf">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Anton&family=Archivo:wght@600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vara@1.4.1/lib/vara.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#15181d; --line:#262b33; --ink:#f4f6f8;
+    --muted:#8b95a3; --accent:#ffd34e; --accent2:#4ad7d4;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:Inter,system-ui,sans-serif;
+    display:grid; grid-template-rows:1fr auto; overflow:hidden;
+  }
+
+  /* stage */
+  #stage{
+    position:relative; display:grid; place-items:center; padding:6vmin;
+    background:radial-gradient(120% 90% at 50% 0%,#11151b 0%,#0b0d10 55%,#07080a 100%);
+    overflow:hidden;
+  }
+  #stage::after{
+    content:""; position:absolute; inset:0;
+    background-image:
+      linear-gradient(transparent 0,transparent calc(100% - 1px),#ffffff08 100%),
+      linear-gradient(90deg,transparent 0,transparent calc(100% - 1px),#ffffff08 100%);
+    background-size:64px 64px; pointer-events:none; opacity:.5;
+  }
+
+  /* stroke-fill / handwriting output */
+  #ink{
+    position:relative; z-index:1;
+    display:flex; flex-direction:column; align-items:center; gap:0;
+  }
+  #ink svg{ overflow:visible; display:block; }
+
+  /* word / char animation output */
+  #title{
+    display:none;
+    position:relative; z-index:1;
+    max-width:16ch; text-align:center;
+    line-height:1.04; letter-spacing:-0.02em;
+    font-weight:900; font-size:clamp(40px,8.5vw,132px);
+    text-wrap:balance;
+  }
+  #title .word,#title .char{
+    display:inline-block; white-space:pre;
+    will-change:transform,opacity,filter;
+  }
+  #title .hl{color:var(--accent);}
+  #title .line-wrap{display:block; overflow:hidden;}
+
+  /* loading overlay */
+  #loading{
+    position:absolute; inset:0; z-index:10; display:grid; place-items:center;
+    font-size:13px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase;
+    background:var(--bg); transition:opacity .3s ease;
+  }
+  #loading.gone{opacity:0; pointer-events:none;}
+
+  /* panel */
+  #panel{
+    background:var(--panel); border-top:1px solid var(--line);
+    padding:14px 18px; display:grid;
+    grid-template-columns:1.6fr 1fr auto;
+    gap:14px 18px; align-items:end;
+  }
+  .field{display:flex; flex-direction:column; gap:6px; min-width:0;}
+  .field label{
+    font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--muted); font-weight:700;
+  }
+  .val{color:var(--accent); font-variant-numeric:tabular-nums;}
+  input[type=text],select,textarea{
+    background:#0e1116; color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:9px 10px; font:inherit; font-size:14px; outline:none;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--accent2);}
+  textarea{resize:none; height:42px; line-height:1.2;}
+  input[type=range]{width:100%; accent-color:var(--accent);}
+  .row{display:flex; gap:10px; flex-wrap:wrap;}
+  button{
+    background:var(--accent); color:#1a1500; border:0; border-radius:8px;
+    font-weight:800; font-size:14px; padding:11px 18px; cursor:pointer;
+    white-space:nowrap; transition:transform .12s ease,filter .12s ease;
+  }
+  button:hover{filter:brightness(1.06);} button:active{transform:translateY(1px);}
+  .swatch{
+    width:26px; height:26px; border-radius:6px;
+    border:2px solid transparent; cursor:pointer;
+  }
+  .swatch.on{border-color:var(--ink);}
+  .hint{color:var(--muted); font-size:12px; grid-column:1/-1; margin-top:-2px;}
+  code{color:var(--accent2);}
+
+  /* mode-specific control groups */
+  .ctrl-group{
+    grid-column:1/-1;
+    display:flex; flex-wrap:wrap; gap:14px 18px; align-items:end;
+  }
+  .ctrl-group .field{min-width:140px; flex:1;}
+  .ctrl-group .field.grow2{flex:2; min-width:260px;}
+  .ctrl-group .field.grow3{flex:3; min-width:380px;}
+
+  @media(max-width:920px){#panel{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+  <div id="loading">Loading fonts…</div>
+
+  <main id="stage">
+    <div id="ink"></div>
+    <h1 id="title"></h1>
+  </main>
+
+  <section id="panel">
+
+    <!-- Row 1: Text · Animation · Replay -->
+    <div class="field">
+      <label for="text">Text — one line per animation line</label>
+      <textarea id="text">The universe has no obligation
+to make sense to you</textarea>
+    </div>
+
+    <div class="field">
+      <label for="mode">Animation</label>
+      <select id="mode">
+        <option value="strokeFill" selected>Stroke &amp; Fill</option>
+        <option value="wordFadeUp">Word Fade Up</option>
+        <option value="blurIn">Blur In</option>
+        <option value="maskReveal">Mask Slide Up</option>
+        <option value="charPop">Char Spring Pop</option>
+        <option value="typeSlide">Word Slide In</option>
+        <option value="handwriting">Handwriting</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>&nbsp;</label>
+      <button id="play">▶ Replay</button>
+    </div>
+
+    <!-- Stroke + Fill controls -->
+    <div id="ctrl-sf" class="ctrl-group">
+      <div class="field">
+        <label for="sf-font">Font</label>
+        <select id="sf-font">
+          <option value="roboto">Roboto (geometric sans)</option>
+          <option value="abril">Abril Fatface (display serif)</option>
+          <option value="fira">Fira Sans (humanist sans)</option>
+          <option value="fraunces" selected>Fraunces (optical serif)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Stroke color</label>
+        <div class="row" id="sf-colors">
+          <span class="swatch"    data-c="#4ad7d4" style="background:#4ad7d4"></span>
+          <span class="swatch on" data-c="#ffd34e" style="background:#ffd34e"></span>
+          <span class="swatch"    data-c="#f4f6f8" style="background:#f4f6f8"></span>
+          <span class="swatch"    data-c="#ff6b6b" style="background:#ff6b6b"></span>
+        </div>
+      </div>
+      <div class="field grow3">
+        <label>
+          Size <span class="val" id="sf-sizeVal">72</span> ·
+          Weight <span class="val" id="sf-weightVal">100</span> ·
+          Stroke <span class="val" id="sf-swVal">1</span> ·
+          Speed <span class="val" id="sf-speedVal">560</span> px/s
+        </label>
+        <div class="row">
+          <input type="range" id="sf-size"   min="30"  max="120"  value="72">
+          <input type="range" id="sf-weight" min="100" max="900"  step="100" value="100">
+          <input type="range" id="sf-sw"     min="0.5" max="4"    step="0.5" value="1">
+          <input type="range" id="sf-speed"  min="80"  max="2400" step="20"  value="560">
+        </div>
+      </div>
+      <div class="field grow2">
+        <label>
+          Fill starts <span class="val" id="sf-foVal">as last stroke ends</span> ·
+          fades <span class="val" id="sf-fdurVal">400</span>ms
+        </label>
+        <div class="row">
+          <input type="range" id="sf-fillOffset" min="-1500" max="1500" step="50" value="0">
+          <input type="range" id="sf-fillDur"    min="50"    max="1500" step="50" value="400">
+        </div>
+      </div>
+    </div>
+
+    <!-- Word / Char animation controls -->
+    <div id="ctrl-word" class="ctrl-group" style="display:none">
+      <div class="field">
+        <label for="w-font">Typeface</label>
+        <select id="w-font">
+          <option value="Inter">Inter Black</option>
+          <option value="Archivo">Archivo Black</option>
+          <option value="Anton">Anton</option>
+        </select>
+      </div>
+      <div class="field grow2">
+        <label>
+          Stagger <span class="val" id="w-staggerVal">55</span>ms ·
+          Duration <span class="val" id="w-durVal">700</span>ms
+        </label>
+        <div class="row">
+          <input type="range" id="w-stagger" min="0"   max="180"  value="55">
+          <input type="range" id="w-dur"     min="200" max="1600" value="700">
+        </div>
+      </div>
+    </div>
+
+    <!-- Handwriting controls -->
+    <div id="ctrl-hw" class="ctrl-group" style="display:none">
+      <div class="field">
+        <label for="hw-font">Hand</label>
+        <select id="hw-font">
+          <option value="satisfy">Satisfy (signature)</option>
+          <option value="pacifico">Pacifico (round)</option>
+          <option value="parisienne">Parisienne (fine)</option>
+          <option value="shadows">Shadows Into Light (print)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Color</label>
+        <div class="row" id="hw-colors">
+          <span class="swatch on" data-c="#f4f6f8" style="background:#f4f6f8"></span>
+          <span class="swatch"    data-c="#ffd34e" style="background:#ffd34e"></span>
+          <span class="swatch"    data-c="#4ad7d4" style="background:#4ad7d4"></span>
+        </div>
+      </div>
+      <div class="field grow2">
+        <label>
+          Size <span class="val" id="hw-sizeVal">96</span> ·
+          Stroke <span class="val" id="hw-swVal">2</span> ·
+          Speed <span class="val" id="hw-durVal">1600</span>ms
+        </label>
+        <div class="row">
+          <input type="range" id="hw-size" min="36"  max="150"  value="96">
+          <input type="range" id="hw-sw"   min="1"   max="6"    step="0.5" value="2">
+          <input type="range" id="hw-dur"  min="500" max="4000" step="50"  value="1600">
+        </div>
+      </div>
+    </div>
+
+    <p class="hint">
+      <span id="hint-sf">All letters stroke simultaneously from the bottommost point; fill fades in once strokes complete. Abril Fatface is single-weight only.</span>
+      <span id="hint-word" style="display:none">Word &amp; char entrance animations via the Web Animations API — zero dependencies. Wrap a word in <code>*asterisks*</code> to highlight it in yellow.</span>
+      <span id="hint-hw"   style="display:none">Centerline handwriting via Vara.js — each glyph's pen-path draws with <code>stroke-dashoffset</code>. Each text line animates as its own SVG.</span>
+    </p>
+  </section>
+
+<script>
+const $ = s => document.querySelector(s);
+
+// ─── MODE ROUTING ──────────────────────────────────────────────────────────────
+const MODE_CTRL  = { strokeFill:'ctrl-sf', wordFadeUp:'ctrl-word', blurIn:'ctrl-word', maskReveal:'ctrl-word', charPop:'ctrl-word', typeSlide:'ctrl-word', handwriting:'ctrl-hw' };
+const MODE_HINT  = { strokeFill:'hint-sf', wordFadeUp:'hint-word', blurIn:'hint-word', maskReveal:'hint-word', charPop:'hint-word', typeSlide:'hint-word', handwriting:'hint-hw' };
+const MODE_STAGE = { strokeFill:'ink',     wordFadeUp:'title',     blurIn:'title',     maskReveal:'title',     charPop:'title',     typeSlide:'title',     handwriting:'ink' };
+
+function applyMode(mode) {
+  ['ctrl-sf','ctrl-word','ctrl-hw'].forEach(id =>
+    document.getElementById(id).style.display = id === MODE_CTRL[mode] ? 'flex' : 'none');
+  ['hint-sf','hint-word','hint-hw'].forEach(id =>
+    document.getElementById(id).style.display = id === MODE_HINT[mode] ? '' : 'none');
+  const useInk = MODE_STAGE[mode] === 'ink';
+  $('#ink').style.display   = useInk ? 'flex' : 'none';
+  $('#title').style.display = useInk ? 'none' : 'block';
+  // Vara needs a fixed-width container; stroke-fill SVGs are self-sizing
+  $('#ink').style.width = mode === 'handwriting' ? 'min(90vw, 1100px)' : '';
+  if (!useInk) $('#title').style.fontFamily = `${$('#w-font').value}, Inter, sans-serif`;
+}
+
+// ─── STROKE + FILL ─────────────────────────────────────────────────────────────
+const FONT_URLS = {
+  roboto: {
+    100:'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbGmT.ttf',
+    200:'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuZEbWmT.ttf',
+    300:'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuaabWmT.ttf',
+    400:'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbWmT.ttf',
+    500:'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWub2bWmT.ttf',
+    600:'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYaammT.ttf',
+    700:'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYjammT.ttf',
+    800:'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuZEammT.ttf',
+    900:'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuZtammT.ttf',
+  },
+  abril: {
+    400:'https://fonts.gstatic.com/s/abrilfatface/v25/zOL64pLDlL1D99S8g8PtiKchm-A.ttf',
+  },
+  fira: {
+    300:'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnPKruQQ.ttf',
+    400:'https://fonts.gstatic.com/s/firasans/v18/va9E4kDNxMZdWfMOD5VfkA.ttf',
+    500:'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnZKvuQQ.ttf',
+    600:'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnSKzuQQ.ttf',
+    700:'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnLK3uQQ.ttf',
+    800:'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnMK7uQQ.ttf',
+  },
+  fraunces: {
+    100:'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIctxqjDg.ttf',
+    200:'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcNxujDg.ttf',
+    300:'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIc6RujDg.ttf',
+    400:'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIctxujDg.ttf',
+    500:'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf',
+    600:'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf',
+    700:'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf',
+    800:'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcNxyjDg.ttf',
+    900:'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcHhyjDg.ttf',
+  },
+};
+
+function resolveWeight(name, target) {
+  const available = Object.keys(FONT_URLS[name]).map(Number);
+  return available.reduce((a, b) => Math.abs(b - target) < Math.abs(a - target) ? b : a);
+}
+const fontCache = {};
+async function loadFont(name, weight) {
+  const w   = resolveWeight(name, weight);
+  const key = `${name}-${w}`;
+  if (fontCache[key]) return fontCache[key];
+  const f = await new Promise((res, rej) =>
+    opentype.load(FONT_URLS[name][w], (err, font) => err ? rej(err) : res(font)));
+  fontCache[key] = f;
+  return f;
+}
+
+let sfStrokeColor = '#ffd34e';
+let sfFillColor   = '#f4f6f8';
+let timerHandles  = [];
+function cancelAll() {
+  timerHandles.forEach(id => clearTimeout(id));
+  timerHandles = [];
+}
+
+function getEndpoint(cmd) {
+  return (cmd.type !== 'Z' && 'x' in cmd) ? { x: cmd.x, y: cmd.y } : null;
+}
+function rotateSubpathToBottom(cmds) {
+  const hasZ    = cmds[cmds.length - 1].type === 'Z';
+  const drawing = hasZ ? cmds.slice(0, -1) : [...cmds];
+  if (drawing.length < 3) return cmds;
+  let maxY = -Infinity, maxIdx = 0;
+  for (let i = 0; i < drawing.length; i++) {
+    const ep = getEndpoint(drawing[i]);
+    if (ep && ep.y > maxY) { maxY = ep.y; maxIdx = i; }
+  }
+  if (maxIdx === 0) return cmds;
+  const newStart = getEndpoint(drawing[maxIdx]);
+  if (!newStart) return cmds;
+  const origM  = drawing[0];
+  const out    = [
+    { type:'M', x:newStart.x, y:newStart.y },
+    ...drawing.slice(maxIdx + 1),
+    { type:'L', x:origM.x, y:origM.y },
+    ...drawing.slice(1, maxIdx + 1),
+  ];
+  if (hasZ) out.push({ type:'Z' });
+  return out;
+}
+function rotatePathToBottom(commands) {
+  const subpaths = []; let current = [];
+  for (const cmd of commands) {
+    if (cmd.type === 'M' && current.length > 0) { subpaths.push(current); current = []; }
+    current.push({ ...cmd });
+  }
+  if (current.length > 0) subpaths.push(current);
+  return subpaths.flatMap(rotateSubpathToBottom);
+}
+function commandsToD(commands) {
+  return commands.map(cmd => {
+    const f = n => n.toFixed(2);
+    switch (cmd.type) {
+      case 'M': return `M${f(cmd.x)},${f(cmd.y)}`;
+      case 'L': return `L${f(cmd.x)},${f(cmd.y)}`;
+      case 'C': return `C${f(cmd.x1)},${f(cmd.y1)} ${f(cmd.x2)},${f(cmd.y2)} ${f(cmd.x)},${f(cmd.y)}`;
+      case 'Q': return `Q${f(cmd.x1)},${f(cmd.y1)} ${f(cmd.x)},${f(cmd.y)}`;
+      case 'Z': return 'Z';
+      default:  return '';
+    }
+  }).join(' ');
+}
+
+// CSS-transition animation — all paths batch-start in one synchronous block
+function animateAllStrokes(paths, duration, lengths) {
+  paths.forEach((p, i) => {
+    p.style.willChange       = 'stroke-dashoffset';
+    p.style.transition       = 'none';
+    p.style.strokeDasharray  = lengths[i];
+    p.style.strokeDashoffset = lengths[i];
+  });
+  void document.body.offsetHeight; // flush so browser registers initial dashoffset
+  paths.forEach(p => {
+    p.style.transition       = `stroke-dashoffset ${duration}ms linear`;
+    p.style.strokeDashoffset = '0';
+  });
+}
+
+function buildLineSVG(font, text, fontSize, sw, strokeCol, bgCol) {
+  const glyphs    = font.stringToGlyphs(text);
+  const scale     = 1 / font.unitsPerEm * fontSize;
+  const ascender  = font.ascender * scale;
+  const descender = font.descender * scale;
+  const lineH     = ascender - descender;
+  let totalWidth  = 0;
+  glyphs.forEach((g, i) => {
+    totalWidth += g.advanceWidth * scale;
+    if (i < glyphs.length - 1) totalWidth += font.getKerningValue(g, glyphs[i+1]) * scale;
+  });
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg   = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', `0 ${-ascender} ${totalWidth} ${lineH}`);
+  svg.setAttribute('width',   totalWidth);
+  svg.setAttribute('height',  lineH);
+  let x = 0;
+  const glyphPaths = [];
+  glyphs.forEach((glyph, i) => {
+    if (!glyph.path || glyph.path.commands.length === 0) { x += glyph.advanceWidth * scale; return; }
+    const rotated = rotatePathToBottom(glyph.getPath(x, 0, fontSize).commands);
+    const d = commandsToD(rotated);
+    if (!d) { x += glyph.advanceWidth * scale; return; }
+    const p = document.createElementNS(svgNS, 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('stroke', strokeCol);
+    p.setAttribute('stroke-width', sw * 2);
+    p.setAttribute('stroke-linejoin', 'round');
+    p.setAttribute('stroke-linecap', 'round');
+    p.style.fill       = bgCol;
+    p.style.paintOrder = 'stroke fill';
+    svg.appendChild(p);
+    glyphPaths.push(p);
+    x += glyph.advanceWidth * scale;
+    if (i < glyphs.length - 1) x += font.getKerningValue(glyph, glyphs[i+1]) * scale;
+  });
+  return { svg, glyphPaths, width: totalWidth };
+}
+
+async function renderStrokeFill() {
+  cancelAll();
+  const ink = $('#ink');
+  ink.innerHTML = '';
+
+  const fontName   = $('#sf-font').value;
+  const weight     = +$('#sf-weight').value;
+  const fontSize   = +$('#sf-size').value;
+  const sw         = +$('#sf-sw').value;
+  const speed      = +$('#sf-speed').value;
+  const fillOffset = +$('#sf-fillOffset').value;
+  const fillDur    = +$('#sf-fillDur').value;
+  const lines      = $('#text').value.split('\n').filter(l => l.trim());
+
+  const font = await loadFont(fontName, weight);
+  $('#sf-weightVal').textContent = resolveWeight(fontName, weight);
+
+  const bgCol = '#0b0d10';
+  const built = lines.map(l => buildLineSVG(font, l, fontSize, sw, sfStrokeColor, bgCol));
+  const maxW  = Math.max(...built.map(b => b.width));
+  built.forEach(({ svg }) => {
+    svg.style.marginLeft = ((maxW - parseFloat(svg.getAttribute('width'))) / 2) + 'px';
+    ink.appendChild(svg);
+  });
+
+  const allPaths = [];
+  built.forEach(({ glyphPaths }) => glyphPaths.forEach(p => allPaths.push(p)));
+  const lengths      = allPaths.map(p => p.getTotalLength());
+  const maxStrokeDur = (Math.max(...lengths, 0) / speed) * 1000;
+
+  animateAllStrokes(allPaths, maxStrokeDur, lengths);
+
+  const id = setTimeout(() => {
+    allPaths.forEach(p => {
+      p.style.willChange = 'auto';
+      p.style.transition = `fill ${fillDur}ms ease-out`;
+      p.style.fill = sfFillColor;
+    });
+  }, Math.max(0, maxStrokeDur + fillOffset));
+  timerHandles.push(id);
+}
+
+// ─── WORD / CHAR ANIMATIONS ────────────────────────────────────────────────────
+const EASE = {
+  outExpo:  'cubic-bezier(0.16, 1, 0.3, 1)',
+  outBack:  'cubic-bezier(0.34, 1.56, 0.64, 1)',
+  outQuint: 'cubic-bezier(0.22, 1, 0.36, 1)',
+};
+const WORD_PRESETS = {
+  wordFadeUp: {
+    split:'word',
+    frames:() => [
+      { opacity:0, transform:'translateY(0.55em)', filter:'blur(6px)' },
+      { opacity:1, transform:'translateY(0)',       filter:'blur(0)'  },
+    ],
+    ease: EASE.outExpo,
+  },
+  blurIn: {
+    split:'word',
+    frames:() => [
+      { opacity:0, transform:'scale(1.18)', filter:'blur(14px)' },
+      { opacity:1, transform:'scale(1)',    filter:'blur(0)'    },
+    ],
+    ease: EASE.outQuint,
+  },
+  maskReveal: {
+    split:'word',
+    setup: tok => { tok.style.overflow = 'hidden'; },
+    frames:() => [
+      { transform:'translateY(110%)' },
+      { transform:'translateY(0%)'   },
+    ],
+    ease: EASE.outQuint,
+  },
+  charPop: {
+    split:'char',
+    frames:() => [
+      { opacity:0, transform:'translateY(0.3em) scale(0.4)' },
+      { opacity:1, transform:'translateY(0)     scale(1)'   },
+    ],
+    ease: EASE.outBack,
+  },
+  typeSlide: {
+    split:'word',
+    frames:() => [
+      { opacity:0, transform:'translateX(-0.6em)' },
+      { opacity:1, transform:'translateX(0)'      },
+    ],
+    ease: EASE.outExpo,
+  },
+};
+
+function splitText(rawText, mode) {
+  const title = $('#title');
+  title.innerHTML = '';
+  const tokens = [];
+  const parts  = rawText.split(/(\*[^*]+\*)/g).filter(Boolean);
+  const words  = [];
+  for (const part of parts) {
+    const hl    = part.startsWith('*') && part.endsWith('*');
+    const clean = hl ? part.slice(1, -1) : part;
+    for (const w of clean.split(/(\s+)/)) {
+      if (w === '') continue;
+      words.push({ text:w, hl, space:/^\s+$/.test(w) });
+    }
+  }
+  if (mode === 'char') {
+    for (const w of words) {
+      for (const ch of w.text) {
+        const span = document.createElement('span');
+        span.className = 'char' + (w.hl ? ' hl' : '');
+        span.textContent = ch;
+        title.appendChild(span);
+        if (!/\s/.test(ch)) tokens.push(span);
+      }
+    }
+  } else {
+    for (const w of words) {
+      const span = document.createElement('span');
+      span.className = 'word' + (w.hl ? ' hl' : '');
+      span.textContent = w.text;
+      title.appendChild(span);
+      if (!w.space) tokens.push(span);
+    }
+  }
+  return tokens;
+}
+
+function playWordAnim(mode) {
+  cancelAll();
+  const p       = WORD_PRESETS[mode];
+  const stagger = +$('#w-stagger').value;
+  const dur     = +$('#w-dur').value;
+  const text    = $('#text').value.split('\n').filter(l => l.trim()).join(' ');
+  const tokens  = splitText(text, p.split);
+  tokens.forEach((tok, i) => {
+    if (p.setup) p.setup(tok);
+    tok.animate(p.frames(), { duration:dur, delay:i * stagger, easing:p.ease, fill:'both' });
+  });
+}
+
+// ─── HANDWRITING ───────────────────────────────────────────────────────────────
+const HW_FONTS = {
+  satisfy:    'https://cdn.jsdelivr.net/gh/akzhy/Vara/fonts/Satisfy/SatisfySL.json',
+  pacifico:   'https://cdn.jsdelivr.net/gh/akzhy/Vara/fonts/Pacifico/PacificoSLO.json',
+  parisienne: 'https://cdn.jsdelivr.net/gh/akzhy/Vara/fonts/Parisienne/Parisienne.json',
+  shadows:    'https://cdn.jsdelivr.net/gh/akzhy/Vara/fonts/Shadows-Into-Light/shadows-into-light.json',
+};
+let hwColor = '#f4f6f8';
+
+function renderHandwriting() {
+  cancelAll();
+  $('#ink').innerHTML = '';
+  const lines = $('#text').value.split('\n').filter(l => l.trim());
+  new Vara('#ink', HW_FONTS[$('#hw-font').value],
+    lines.map((text, i) => ({ text, duration: +$('#hw-dur').value, id:'hw'+i })),
+    { fontSize:+$('#hw-size').value, strokeWidth:+$('#hw-sw').value,
+      color:hwColor, textAlign:'center', letterSpacing:0 }
+  );
+}
+
+// ─── UNIFIED PLAY ──────────────────────────────────────────────────────────────
+function play() {
+  const mode = $('#mode').value;
+  cancelAll();
+  if      (mode === 'strokeFill')  renderStrokeFill();
+  else if (mode === 'handwriting') renderHandwriting();
+  else                             playWordAnim(mode);
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────────
+loadFont('fraunces', 100).then(() => {
+  $('#loading').classList.add('gone');
+  applyMode('strokeFill');
+  play();
+}).catch(e => { $('#loading').textContent = 'Font load failed: ' + e.message; });
+
+// ─── WIRING ────────────────────────────────────────────────────────────────────
+$('#mode').addEventListener('change', e => { applyMode(e.target.value); play(); });
+$('#text').addEventListener('input',  cancelAll);
+$('#text').addEventListener('change', play);
+$('#play').addEventListener('click',  play);
+
+// Stroke + Fill
+$('#sf-font').addEventListener('change', play);
+$('#sf-size').addEventListener('input',       e => $('#sf-sizeVal').textContent   = e.target.value);
+$('#sf-weight').addEventListener('input',     e => $('#sf-weightVal').textContent = e.target.value);
+$('#sf-sw').addEventListener('input',         e => $('#sf-swVal').textContent     = e.target.value);
+$('#sf-speed').addEventListener('input',      e => $('#sf-speedVal').textContent  = e.target.value);
+$('#sf-fillDur').addEventListener('input',    e => $('#sf-fdurVal').textContent   = e.target.value);
+$('#sf-fillOffset').addEventListener('input', () => {
+  const v = +$('#sf-fillOffset').value;
+  $('#sf-foVal').textContent = v < 0 ? `${-v}ms before strokes end`
+                             : v === 0 ? 'as last stroke ends'
+                             : `${v}ms after strokes end`;
+});
+['#sf-font','#sf-size','#sf-weight','#sf-sw','#sf-speed','#sf-fillOffset','#sf-fillDur']
+  .forEach(id => $(id).addEventListener('change', play));
+$('#sf-colors').addEventListener('click', e => {
+  const s = e.target.closest('.swatch'); if (!s) return;
+  sfStrokeColor = s.dataset.c;
+  document.querySelectorAll('#sf-colors .swatch').forEach(x => x.classList.toggle('on', x === s));
+  play();
+});
+
+// Word animations
+$('#w-font').addEventListener('change', e => {
+  $('#title').style.fontFamily = `${e.target.value}, Inter, sans-serif`;
+  play();
+});
+$('#w-stagger').addEventListener('input',  e => $('#w-staggerVal').textContent = e.target.value);
+$('#w-dur').addEventListener('input',      e => $('#w-durVal').textContent     = e.target.value);
+$('#w-stagger').addEventListener('change', play);
+$('#w-dur').addEventListener('change', play);
+
+// Handwriting
+$('#hw-font').addEventListener('change', play);
+$('#hw-size').addEventListener('input', e => $('#hw-sizeVal').textContent = e.target.value);
+$('#hw-sw').addEventListener('input',   e => $('#hw-swVal').textContent   = e.target.value);
+$('#hw-dur').addEventListener('input',  e => $('#hw-durVal').textContent  = e.target.value);
+['#hw-font','#hw-size','#hw-sw','#hw-dur'].forEach(id => $(id).addEventListener('change', play));
+$('#hw-colors').addEventListener('click', e => {
+  const s = e.target.closest('.swatch'); if (!s) return;
+  hwColor = s.dataset.c;
+  document.querySelectorAll('#hw-colors .swatch').forEach(x => x.classList.toggle('on', x === s));
+  play();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stroke → Fill (3b1b / Manim style) — motion lab</title>
+<link rel="preload" as="font" crossorigin="anonymous"
+  href="https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIctxqjDg.ttf">
+<script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#15181d; --line:#262b33; --ink:#f4f6f8;
+    --muted:#8b95a3; --accent:#ffd34e; --accent2:#4ad7d4;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:Inter,system-ui,sans-serif;
+    display:grid; grid-template-rows:1fr auto; overflow:hidden;
+  }
+  #stage{
+    position:relative; display:grid; place-items:center; padding:6vmin;
+    background:radial-gradient(120% 90% at 50% 0%,#11151b 0%,#0b0d10 55%,#07080a 100%);
+    overflow:hidden;
+  }
+  #stage::after{
+    content:""; position:absolute; inset:0;
+    background-image:
+      linear-gradient(transparent 0,transparent calc(100% - 1px),#ffffff08 100%),
+      linear-gradient(90deg,transparent 0,transparent calc(100% - 1px),#ffffff08 100%);
+    background-size:64px 64px; pointer-events:none; opacity:.5;
+  }
+  #ink{
+    position:relative; z-index:1;
+    display:flex; flex-direction:column; align-items:center; gap:0;
+  }
+  #ink svg{ overflow:visible; display:block; }
+  #loading{
+    position:absolute; inset:0; z-index:10; display:grid; place-items:center;
+    font-size:13px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase;
+    background:var(--bg);
+    transition:opacity .3s ease;
+  }
+  #loading.gone{ opacity:0; pointer-events:none; }
+
+  #panel{
+    background:var(--panel); border-top:1px solid var(--line);
+    padding:14px 18px; display:grid;
+    grid-template-columns:1.6fr 1fr 1fr 1.4fr auto;
+    gap:14px 18px; align-items:end;
+  }
+  .field{display:flex; flex-direction:column; gap:6px; min-width:0;}
+  .field label{
+    font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--muted); font-weight:700;
+  }
+  .val{color:var(--accent); font-variant-numeric:tabular-nums;}
+  input[type=text],select,textarea{
+    background:#0e1116; color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:9px 10px; font:inherit; font-size:14px; outline:none;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--accent2);}
+  textarea{resize:none; height:42px; line-height:1.2;}
+  input[type=range]{width:100%; accent-color:var(--accent);}
+  .row{display:flex; gap:10px; flex-wrap:wrap;}
+  button{
+    background:var(--accent); color:#1a1500; border:0; border-radius:8px;
+    font-weight:800; font-size:14px; padding:11px 18px; cursor:pointer;
+    white-space:nowrap; transition:transform .12s ease,filter .12s ease;
+  }
+  button:hover{filter:brightness(1.06);} button:active{transform:translateY(1px);}
+  button.ghost{background:transparent; color:var(--ink); border:1px solid var(--line);}
+  .swatch{
+    width:26px; height:26px; border-radius:6px;
+    border:2px solid transparent; cursor:pointer;
+  }
+  .swatch.on{border-color:var(--ink);}
+  .hint{color:var(--muted); font-size:12px; grid-column:1/-1; margin-top:-2px;}
+  code{color:var(--accent2);}
+  @media(max-width:920px){#panel{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+  <div id="loading">Loading fonts…</div>
+
+  <main id="stage"><div id="ink"></div></main>
+
+  <section id="panel">
+    <div class="field" style="grid-column:span 2;">
+      <label for="text">Text — one line per animation line</label>
+      <textarea id="text">The universe has no obligation
+to make sense to you</textarea>
+    </div>
+
+    <div class="field">
+      <label for="font">Font</label>
+      <select id="font">
+        <option value="roboto">Roboto (geometric sans)</option>
+        <option value="abril">Abril Fatface (display serif)</option>
+        <option value="fira">Fira Sans (humanist sans)</option>
+        <option value="fraunces" selected>Fraunces (optical serif)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Stroke color</label>
+      <div class="row" id="colors">
+        <span class="swatch" data-c="#4ad7d4" style="background:#4ad7d4"></span>
+        <span class="swatch on" data-c="#ffd34e" style="background:#ffd34e"></span>
+        <span class="swatch" data-c="#f4f6f8" style="background:#f4f6f8"></span>
+        <span class="swatch" data-c="#ff6b6b" style="background:#ff6b6b"></span>
+      </div>
+    </div>
+
+    <div class="field" style="grid-column:span 2;">
+      <label>
+        Font size <span class="val" id="sizeVal">72</span> ·
+        Weight <span class="val" id="weightVal">100</span> ·
+        Stroke width <span class="val" id="swVal">1</span> ·
+        Pen speed <span class="val" id="speedVal">560</span> px/s
+      </label>
+      <div class="row">
+        <input type="range" id="size"   min="30"  max="120"  value="72">
+        <input type="range" id="weight" min="100" max="900"  step="100" value="100">
+        <input type="range" id="sw"     min="0.5" max="4"    step="0.5" value="1">
+        <input type="range" id="speed"  min="80"  max="2400" step="20"  value="560">
+      </div>
+    </div>
+
+    <div class="field" style="grid-column:span 2;">
+      <label>
+        Fill starts <span class="val" id="foVal">as last stroke ends</span> ·
+        fades over <span class="val" id="fdurVal">400</span>ms
+      </label>
+      <div class="row">
+        <input type="range" id="fillOffset" min="-1500" max="1500" step="50" value="0">
+        <input type="range" id="fillDur"    min="50"    max="1500" step="50" value="400">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>&nbsp;</label>
+      <button id="play">▶ Replay</button>
+    </div>
+
+    <p class="hint">
+      All letters stroke simultaneously and finish at the same time — duration is set by the longest glyph at the pen speed; shorter letters animate proportionally slower. Fill fades in across the whole phrase once strokes end. Abril Fatface is single-weight only.
+    </p>
+  </section>
+
+<script>
+const $ = s => document.querySelector(s);
+
+// Per-weight font URLs from Google Fonts CDN.
+// Keys are CSS weight integers; loadFont() snaps to the nearest available weight.
+const FONT_URLS = {
+  roboto: {
+    100: 'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbGmT.ttf',
+    200: 'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuZEbWmT.ttf',
+    300: 'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuaabWmT.ttf',
+    400: 'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbWmT.ttf',
+    500: 'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWub2bWmT.ttf',
+    600: 'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYaammT.ttf',
+    700: 'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYjammT.ttf',
+    800: 'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuZEammT.ttf',
+    900: 'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuZtammT.ttf',
+  },
+  abril: {
+    400: 'https://fonts.gstatic.com/s/abrilfatface/v25/zOL64pLDlL1D99S8g8PtiKchm-A.ttf',
+  },
+  fira: {
+    300: 'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnPKruQQ.ttf',
+    400: 'https://fonts.gstatic.com/s/firasans/v18/va9E4kDNxMZdWfMOD5VfkA.ttf',
+    500: 'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnZKvuQQ.ttf',
+    600: 'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnSKzuQQ.ttf',
+    700: 'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnLK3uQQ.ttf',
+    800: 'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnMK7uQQ.ttf',
+  },
+  fraunces: {
+    100: 'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIctxqjDg.ttf',
+    200: 'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcNxujDg.ttf',
+    300: 'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIc6RujDg.ttf',
+    400: 'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIctxujDg.ttf',
+    500: 'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIchRujDg.ttf',
+    600: 'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcaRyjDg.ttf',
+    700: 'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcUByjDg.ttf',
+    800: 'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcNxyjDg.ttf',
+    900: 'https://fonts.gstatic.com/s/fraunces/v38/6NUh8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib1603gg7S2nfgRYIcHhyjDg.ttf',
+  },
+};
+
+const DEFAULT_WEIGHT = 700;
+
+// Snap target weight to the nearest weight available for a given font
+function resolveWeight(name, target) {
+  const available = Object.keys(FONT_URLS[name]).map(Number);
+  return available.reduce((a, b) => Math.abs(b - target) < Math.abs(a - target) ? b : a);
+}
+
+// Cache keyed by "name-weight" so each (font, weight) pair is loaded once
+const fontCache = {};
+
+async function loadFont(name, weight) {
+  const w   = resolveWeight(name, weight);
+  const key = `${name}-${w}`;
+  if (fontCache[key]) return fontCache[key];
+  const f = await new Promise((res, rej) =>
+    opentype.load(FONT_URLS[name][w], (err, font) => err ? rej(err) : res(font)));
+  fontCache[key] = f;
+  return f;
+}
+
+// Only load the default font on startup; other fonts fetch on demand (cached after first use)
+loadFont('fraunces', 100).then(() => {
+  $('#loading').classList.add('gone');
+  render();
+}).catch(e => {
+  $('#loading').textContent = 'Font load failed: ' + e.message;
+});
+
+// ---- state ----
+let strokeColor = '#ffd34e';
+let fillColor   = '#f4f6f8';
+let rafHandles  = [];
+let timerHandles = [];
+
+function cancelAll() {
+  rafHandles.forEach(id => cancelAnimationFrame(id));
+  rafHandles = [];
+  timerHandles.forEach(id => clearTimeout(id));
+  timerHandles = [];
+}
+
+// ---- path rotation: rotate each contour to start at its bottommost point ----
+// opentype.js getPath() returns commands in SVG coords (y increases downward),
+// so "bottom of letter" = maximum y value.
+
+function getEndpoint(cmd) {
+  return (cmd.type !== 'Z' && 'x' in cmd) ? { x: cmd.x, y: cmd.y } : null;
+}
+
+function rotateSubpathToBottom(cmds) {
+  const hasZ    = cmds[cmds.length - 1].type === 'Z';
+  const drawing = hasZ ? cmds.slice(0, -1) : [...cmds];
+  if (drawing.length < 3) return cmds;
+
+  // Search all commands (including M at index 0) for the highest SVG y = bottommost
+  let maxY = -Infinity, maxIdx = 0;
+  for (let i = 0; i < drawing.length; i++) {
+    const ep = getEndpoint(drawing[i]);
+    if (ep && ep.y > maxY) { maxY = ep.y; maxIdx = i; }
+  }
+
+  if (maxIdx === 0) return cmds; // M is already at the bottommost point
+
+  const newStart = getEndpoint(drawing[maxIdx]);
+  if (!newStart) return cmds;
+
+  const origM  = drawing[0];
+  const newM   = { type: 'M', x: newStart.x, y: newStart.y };
+  const after  = drawing.slice(maxIdx + 1);
+  // Bridge explicitly closes the arc that Z was implicitly closing
+  const bridge = { type: 'L', x: origM.x, y: origM.y };
+  const before = drawing.slice(1, maxIdx + 1);
+
+  const out = [newM, ...after, bridge, ...before];
+  if (hasZ) out.push({ type: 'Z' });
+  return out;
+}
+
+function rotatePathToBottom(commands) {
+  const subpaths = [];
+  let current = [];
+  for (const cmd of commands) {
+    if (cmd.type === 'M' && current.length > 0) {
+      subpaths.push(current);
+      current = [];
+    }
+    current.push({ ...cmd });
+  }
+  if (current.length > 0) subpaths.push(current);
+  return subpaths.flatMap(rotateSubpathToBottom);
+}
+
+function commandsToD(commands) {
+  return commands.map(cmd => {
+    const f = n => n.toFixed(2);
+    switch (cmd.type) {
+      case 'M': return `M${f(cmd.x)},${f(cmd.y)}`;
+      case 'L': return `L${f(cmd.x)},${f(cmd.y)}`;
+      case 'C': return `C${f(cmd.x1)},${f(cmd.y1)} ${f(cmd.x2)},${f(cmd.y2)} ${f(cmd.x)},${f(cmd.y)}`;
+      case 'Q': return `Q${f(cmd.x1)},${f(cmd.y1)} ${f(cmd.x)},${f(cmd.y)}`;
+      case 'Z': return 'Z';
+      default:  return '';
+    }
+  }).join(' ');
+}
+
+// ---- animate ALL glyph paths via CSS transitions ----
+// Setting all transitions in one synchronous JS block lets the CSS engine
+// batch them as a single composited animation — guaranteed same-frame start,
+// zero JS overhead per frame, no rAF drift across letters.
+// lengths[] must be pre-computed (passed in) so getTotalLength() is called once per path.
+function animateAllStrokes(paths, duration, lengths) {
+  // 1. Freeze: no transitions, initial invisible state
+  paths.forEach((p, i) => {
+    p.style.willChange       = 'stroke-dashoffset';
+    p.style.transition       = 'none';
+    p.style.strokeDasharray  = lengths[i];
+    p.style.strokeDashoffset = lengths[i];
+  });
+
+  // 2. Force a layout flush so the browser commits the initial dashoffset
+  //    before we set the transition target in the same JS tick
+  void document.body.offsetHeight;
+
+  // 3. Start — all paths transition together as one CSS batch
+  paths.forEach(p => {
+    p.style.transition       = `stroke-dashoffset ${duration}ms linear`;
+    p.style.strokeDashoffset = '0';
+  });
+}
+
+// ---- build SVG for one line of text ----
+// Each glyph uses ONE path element with both fill + stroke.
+// fill starts as bgCol (= stage background) so the letter interior is invisible
+// against the background during animation — only the outer stroke edge shows.
+// paint-order:stroke fill renders the stroke UNDERNEATH the fill, so any path
+// segment that crosses the letter interior is immediately masked by the fill.
+// After animation the fill colour transitions to the real fill colour.
+function buildLineSVG(font, text, fontSize, sw, strokeCol, fillCol, bgCol) {
+  const glyphs    = font.stringToGlyphs(text);
+  const scale     = 1 / font.unitsPerEm * fontSize;
+  const ascender  = font.ascender  * scale;
+  const descender = font.descender * scale;
+  const lineH     = ascender - descender;
+
+  let totalWidth = 0;
+  glyphs.forEach((g, i) => {
+    totalWidth += g.advanceWidth * scale;
+    if (i < glyphs.length - 1)
+      totalWidth += font.getKerningValue(g, glyphs[i+1]) * scale;
+  });
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg   = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', `0 ${-ascender} ${totalWidth} ${lineH}`);
+  svg.setAttribute('width',  totalWidth);
+  svg.setAttribute('height', lineH);
+
+  let x = 0;
+  const glyphPaths = [];
+
+  glyphs.forEach((glyph, i) => {
+    if (!glyph.path || glyph.path.commands.length === 0) {
+      x += glyph.advanceWidth * scale;
+      return;
+    }
+
+    const opPath  = glyph.getPath(x, 0, fontSize);
+    const rotated = rotatePathToBottom(opPath.commands);
+    const d       = commandsToD(rotated);
+    if (!d) { x += glyph.advanceWidth * scale; return; }
+
+    const p = document.createElementNS(svgNS, 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('stroke', strokeCol);
+    p.setAttribute('stroke-width', sw * 2); // doubled: fill masks inner half, outer half remains
+    p.setAttribute('stroke-linejoin', 'round');
+    p.setAttribute('stroke-linecap',  'round');
+    p.style.fill      = bgCol;          // interior = background → letter looks like clean outline
+    p.style.paintOrder = 'stroke fill'; // stroke rendered below fill; fill masks all inner segments
+    svg.appendChild(p);
+    glyphPaths.push(p);
+
+    x += glyph.advanceWidth * scale;
+    if (i < glyphs.length - 1)
+      x += font.getKerningValue(glyph, glyphs[i+1]) * scale;
+  });
+
+  return { svg, glyphPaths, width: totalWidth };
+}
+
+// ---- main render ----
+async function render() {
+  cancelAll();
+  const ink = $('#ink');
+  ink.innerHTML = '';
+
+  const fontName   = $('#font').value;
+  const weight     = +$('#weight').value;
+  const fontSize   = +$('#size').value;
+  const sw         = +$('#sw').value;
+  const speed      = +$('#speed').value;
+  const fillOffset = +$('#fillOffset').value;
+  const fillDur    = +$('#fillDur').value;
+  const lines      = $('#text').value.split('\n').filter(l => l.trim());
+
+  // Load on demand — cache hit is instant, miss fetches the new weight file
+  const font = await loadFont(fontName, weight);
+
+  // Update the weight label to show the actual resolved weight (relevant for Abril)
+  $('#weightVal').textContent = resolveWeight(fontName, weight);
+
+  const bgCol = '#0b0d10'; // must match --bg CSS variable
+  const built = lines.map(l => buildLineSVG(font, l, fontSize, sw, strokeColor, fillColor, bgCol));
+  const maxW  = Math.max(...built.map(b => b.width));
+
+  built.forEach(({ svg }) => {
+    const w = parseFloat(svg.getAttribute('width'));
+    svg.style.marginLeft = ((maxW - w) / 2) + 'px';
+    ink.appendChild(svg);
+  });
+
+  // All strokes start and end simultaneously.
+  // Duration is driven by the longest glyph at the set pen speed;
+  // shorter glyphs animate over that same duration (pen moves proportionally slower).
+  const allGlyphPaths = [];
+  built.forEach(({ glyphPaths }) => glyphPaths.forEach(p => allGlyphPaths.push(p)));
+
+  // Compute getTotalLength once per path — reused for dasharray AND maxStrokeDur
+  const lengths      = allGlyphPaths.map(p => p.getTotalLength());
+  const maxPathLen   = Math.max(...lengths, 0);
+  const maxStrokeDur = maxPathLen > 0 ? (maxPathLen / speed) * 1000 : 0;
+
+  animateAllStrokes(allGlyphPaths, maxStrokeDur, lengths);
+
+  // After stroke animation: release compositor hints, fade fill in simultaneously
+  const id = setTimeout(() => {
+    allGlyphPaths.forEach(p => {
+      p.style.willChange = 'auto';
+      p.style.transition = `fill ${fillDur}ms ease-out`;
+      p.style.fill = fillColor;
+    });
+  }, Math.max(0, maxStrokeDur + fillOffset));
+  timerHandles.push(id);
+}
+
+// ---- fill offset display helper ----
+function updateFoLabel() {
+  const v = +$('#fillOffset').value;
+  let label;
+  if      (v < 0)   label = `${-v}ms before all strokes end`;
+  else if (v === 0)  label = 'as last stroke ends';
+  else               label = `${v}ms after all strokes end`;
+  $('#foVal').textContent = label;
+}
+
+// ---- wiring ----
+$('#font').addEventListener('change', render);
+$('#text').addEventListener('input', () => cancelAll());
+$('#size').addEventListener('input',   e => $('#sizeVal').textContent   = e.target.value);
+$('#weight').addEventListener('input', e => $('#weightVal').textContent = e.target.value);
+$('#sw').addEventListener('input',     e => $('#swVal').textContent     = e.target.value);
+$('#speed').addEventListener('input',  e => $('#speedVal').textContent  = e.target.value);
+$('#fillDur').addEventListener('input', e => $('#fdurVal').textContent  = e.target.value);
+$('#fillOffset').addEventListener('input', updateFoLabel);
+[$('#size'), $('#weight'), $('#sw'), $('#speed'), $('#fillOffset'), $('#fillDur')].forEach(el =>
+  el.addEventListener('change', render));
+
+$('#colors').addEventListener('click', e => {
+  const s = e.target.closest('.swatch'); if (!s) return;
+  strokeColor = s.dataset.c;
+  document.querySelectorAll('.swatch').forEach(x => x.classList.toggle('on', x === s));
+  render();
+});
+$('#play').addEventListener('click', render);
+</script>
+</body>
+</html>
