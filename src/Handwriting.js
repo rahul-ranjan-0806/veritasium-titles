@@ -43,7 +43,15 @@ export class Handwriting {
    * @param {Function}       options.onComplete  called after all lines finish
    */
   constructor(container, options = {}) {
-    this.el = typeof container === 'string' ? document.querySelector(container) : container
+    if (typeof container === 'string') {
+      this._varaTarget = container
+      this.el = document.querySelector(container)
+    } else {
+      // Vara.js requires a CSS selector string — auto-assign an id if the element lacks one
+      if (!container.id) container.id = `hw-vara-${Math.random().toString(36).slice(2)}`
+      this._varaTarget = '#' + container.id
+      this.el = container
+    }
     if (!this.el) throw new Error('Handwriting: container element not found')
 
     this.opts = {
@@ -70,7 +78,7 @@ export class Handwriting {
 
     return new Promise(resolve => {
       this._vara = new Vara(
-        this.el,
+        this._varaTarget,
         FONT_URLS[font],
         lines.map((text, i) => ({ text, duration, id: `hw-${i}` })),
         { fontSize, strokeWidth, color, textAlign, letterSpacing: 0 }

@@ -10,7 +10,7 @@
     "imports": {
       "react":            "https://esm.sh/react@18",
       "react-dom/client": "https://esm.sh/react-dom@18/client",
-      "htm/react":        "https://esm.sh/htm/react"
+      "htm":              "https://esm.sh/htm"
     }
   }
   </script>
@@ -146,6 +146,8 @@
 
     /* ── WordAnim stage ──────────────────────────────────────── */
     .wa-stage {
+      display: block;           /* override .stage flex-column */
+      width: min(820px, 100%);
       text-align: center;
       font-weight: 900;
       font-size: clamp(36px, 7vw, 96px);
@@ -154,16 +156,80 @@
     }
 
     /* ── Handwriting stage ───────────────────────────────────── */
-    .hw-stage { width: min(760px, 100%); min-height: 180px }
+    .hw-stage {
+      display: block;           /* override .stage flex-column */
+      width: min(760px, 100%);
+      min-height: 180px;
+    }
   </style>
 </head>
 <body>
 <div id="app"></div>
 
 <script type="module">
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { createElement, useState, useEffect, useRef, useCallback } from 'react'
 import { createRoot } from 'react-dom/client'
-import html from 'htm/react'
+import htm from 'htm'
+const html = htm.bind(createElement)
+
+// ── Snippet helpers ───────────────────────────────────────────────────────────
+const kw  = s => `<span class="kw">${s}</span>`
+const fn_ = s => `<span class="fn">${s}</span>`
+const str = s => `<span class="str">'${s}'</span>`
+const num = v => `<span class="num">${v}</span>`
+const cm  = s => `<span class="cm">// ${s}</span>`
+
+function sfSnippet(cfg) {
+  const BG = '#0b0d10'
+  const lines = cfg.lines.split('\n').filter(Boolean).map(l => `    ${str(l)}`).join(',\n')
+  return [
+    `${kw('import')} ${fn_('{ StrokeFill }')} ${kw('from')} ${str('motion-titles')}`,
+    ``,
+    `${kw('new')} ${fn_('StrokeFill')}(${str('#container')}, {`,
+    `  lines:       [`, lines, `  ],`,
+    `  font:        ${str(cfg.font)},`,
+    `  weight:      ${num(cfg.weight)},`,
+    `  strokeColor: ${str(cfg.strokeColor)},`,
+    `  fillColor:   ${str(cfg.fillColor)},`,
+    `  strokeWidth: ${num(cfg.strokeWidth)},`,
+    `  speed:       ${num(cfg.speed)},`,
+    `  fillDelay:   ${num(cfg.fillDelay)},`,
+    `  background:  ${str(BG)},  ${cm('match your container background')}`,
+    `}).${fn_('play')}()`,
+  ].join('\n')
+}
+
+function waSnippet(cfg) {
+  const text = cfg.text.replace(/'/g, "\\'")
+  return [
+    `${kw('import')} ${fn_('{ WordAnimation }')} ${kw('from')} ${str('motion-titles')}`,
+    ``,
+    `${kw('new')} ${fn_('WordAnimation')}(${str('#container')}, {`,
+    `  text:      ${str(text)},`,
+    `  preset:    ${str(cfg.preset)},`,
+    `  stagger:   ${num(cfg.stagger)},`,
+    `  duration:  ${num(cfg.duration)},`,
+    `  highlight: ${str(cfg.highlight)},`,
+    `}).${fn_('play')}()`,
+  ].join('\n')
+}
+
+function hwSnippet(cfg) {
+  const lines = cfg.lines.split('\n').filter(Boolean).map(l => `    ${str(l)}`).join(',\n')
+  return [
+    `${kw('import')} ${fn_('{ Handwriting }')} ${kw('from')} ${str('motion-titles')}`,
+    ``,
+    `${kw('new')} ${fn_('Handwriting')}(${str('#container')}, {`,
+    `  lines:       [`, lines, `  ],`,
+    `  font:        ${str(cfg.font)},`,
+    `  color:       ${str(cfg.color)},`,
+    `  fontSize:    ${num(cfg.fontSize)},`,
+    `  strokeWidth: ${num(cfg.strokeWidth)},`,
+    `  duration:    ${num(cfg.duration)},`,
+    `  textAlign:   ${str('center')},`,
+    `}).${fn_('play')}()`,
+  ].join('\n')
+}
 
 const CDN = 'https://cdn.jsdelivr.net/gh/rahul-ranjan-0806/veritasium-titles@main/src/'
 let StrokeFill, WordAnimation, Handwriting
@@ -236,7 +302,6 @@ function StrokeDemo() {
 
   const stageRef = useRef(null)
   const animRef  = useRef(null)
-  const tick     = useRef(0)
 
   const play = useCallback(() => {
     if (!stageRef.current) return
@@ -259,9 +324,6 @@ function StrokeDemo() {
   useEffect(() => () => animRef.current?.destroy(), [])
 
   const set = (k, v) => setCfg(c => ({ ...c, [k]: v }))
-
-  const codeLines = cfg.lines.split('\n').filter(Boolean)
-    .map(l => `    '${l}'`).join(',\n')
 
   return html`
     <div class="stage-wrap">
@@ -328,22 +390,7 @@ function StrokeDemo() {
         </div>
       </div>
 
-      <pre class="snippet">${html`<code
-><span class="kw">import</span> <span class="fn">{ StrokeFill }</span> <span class="kw">from</span> <span class="str">'motion-titles'</span>
-
-<span class="kw">new</span> <span class="fn">StrokeFill</span>(<span class="str">'#container'</span>, {
-  lines:       [
-${codeLines}
-  ],
-  font:        <span class="str">'${cfg.font}'</span>,
-  weight:      <span class="num">${cfg.weight}</span>,
-  strokeColor: <span class="str">'${cfg.strokeColor}'</span>,
-  fillColor:   <span class="str">'${cfg.fillColor}'</span>,
-  strokeWidth: <span class="num">${cfg.strokeWidth}</span>,
-  speed:       <span class="num">${cfg.speed}</span>,
-  fillDelay:   <span class="num">${cfg.fillDelay}</span>,
-  background:  <span class="str">'${BG}'</span>,  <span class="cm">// match your container background</span>
-}).<span class="fn">play</span>()</code>`}</pre>
+      <pre class="snippet" dangerouslySetInnerHTML=${{ __html: sfSnippet(cfg) }}></pre>
     </div>
   `
 }
@@ -426,16 +473,7 @@ function WordDemo() {
         </div>
       </div>
 
-      <pre class="snippet">${html`<code
-><span class="kw">import</span> <span class="fn">{ WordAnimation }</span> <span class="kw">from</span> <span class="str">'motion-titles'</span>
-
-<span class="kw">new</span> <span class="fn">WordAnimation</span>(<span class="str">'#container'</span>, {
-  text:      <span class="str">'${cfg.text.replace(/'/g, "\\'")}'</span>,
-  preset:    <span class="str">'${cfg.preset}'</span>,
-  stagger:   <span class="num">${cfg.stagger}</span>,
-  duration:  <span class="num">${cfg.duration}</span>,
-  highlight: <span class="str">'${cfg.highlight}'</span>,
-}).<span class="fn">play</span>()</code>`}</pre>
+      <pre class="snippet" dangerouslySetInnerHTML=${{ __html: waSnippet(cfg) }}></pre>
     </div>
   `
 }
@@ -474,9 +512,6 @@ function HWDemo() {
   useEffect(() => () => animRef.current?.destroy(), [])
 
   const set = (k, v) => setCfg(c => ({ ...c, [k]: v }))
-
-  const codeLines = cfg.lines.split('\n').filter(Boolean)
-    .map(l => `    '${l}'`).join(',\n')
 
   return html`
     <div class="stage-wrap">
@@ -531,20 +566,7 @@ function HWDemo() {
         </div>
       </div>
 
-      <pre class="snippet">${html`<code
-><span class="kw">import</span> <span class="fn">{ Handwriting }</span> <span class="kw">from</span> <span class="str">'motion-titles'</span>
-
-<span class="kw">new</span> <span class="fn">Handwriting</span>(<span class="str">'#container'</span>, {
-  lines:       [
-${codeLines}
-  ],
-  font:        <span class="str">'${cfg.font}'</span>,
-  color:       <span class="str">'${cfg.color}'</span>,
-  fontSize:    <span class="num">${cfg.fontSize}</span>,
-  strokeWidth: <span class="num">${cfg.strokeWidth}</span>,
-  duration:    <span class="num">${cfg.duration}</span>,
-  textAlign:   <span class="str">'center'</span>,
-}).<span class="fn">play</span>()</code>`}</pre>
+      <pre class="snippet" dangerouslySetInnerHTML=${{ __html: hwSnippet(cfg) }}></pre>
     </div>
   `
 }
