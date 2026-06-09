@@ -180,11 +180,9 @@ export class StrokeFill {
 
     const svgNS  = 'http://www.w3.org/2000/svg'
     const built  = lines.map(line => this._buildLine(loadedFont, line, fontSize, strokeWidth, strokeColor, background, svgNS))
-    const maxW   = Math.max(...built.map(b => b.width))
-
     built.forEach(({ svg }) => {
-      svg.style.display    = 'block'
-      svg.style.marginLeft = ((maxW - parseFloat(svg.getAttribute('width'))) / 2) + 'px'
+      svg.style.display = 'block'
+      svg.style.margin  = '0 auto'
       this.el.appendChild(svg)
     })
 
