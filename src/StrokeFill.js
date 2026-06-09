@@ -180,11 +180,26 @@ export class StrokeFill {
 
     const svgNS  = 'http://www.w3.org/2000/svg'
     const built  = lines.map(line => this._buildLine(loadedFont, line, fontSize, strokeWidth, strokeColor, background, svgNS))
-    built.forEach(({ svg }) => {
-      svg.style.display = 'block'
-      svg.style.margin  = '0 auto'
-      this.el.appendChild(svg)
+
+    const maxW   = Math.max(...built.map(b => b.width), 1)
+    const lineH  = built[0]?.lineH ?? fontSize
+    const totalH = lineH * built.length
+
+    // Single SVG: all lines share one viewBox so center-alignment is exact
+    const svg = document.createElementNS(svgNS, 'svg')
+    svg.setAttribute('viewBox', `0 0 ${maxW.toFixed(2)} ${totalH.toFixed(2)}`)
+    svg.setAttribute('width',   maxW)
+    svg.setAttribute('height',  totalH)
+    svg.style.cssText = 'display:block; margin:0 auto; max-width:100%; height:auto'
+
+    built.forEach(({ g, width, ascender }, i) => {
+      const xOff = ((maxW - width) / 2).toFixed(2)
+      const yOff = (i * lineH + ascender).toFixed(2)
+      g.setAttribute('transform', `translate(${xOff},${yOff})`)
+      svg.appendChild(g)
     })
+
+    this.el.appendChild(svg)
 
     const allPaths = built.flatMap(b => b.glyphPaths)
     const lengths  = allPaths.map(p => p.getTotalLength())
@@ -238,16 +253,13 @@ export class StrokeFill {
     const lineH     = ascender - descender
 
     let totalWidth = 0
-    glyphs.forEach((g, i) => {
-      totalWidth += g.advanceWidth * scale
-      if (i < glyphs.length - 1) totalWidth += font.getKerningValue(g, glyphs[i + 1]) * scale
+    glyphs.forEach((glyph, i) => {
+      totalWidth += glyph.advanceWidth * scale
+      if (i < glyphs.length - 1) totalWidth += font.getKerningValue(glyph, glyphs[i + 1]) * scale
     })
 
-    const svg = document.createElementNS(svgNS, 'svg')
-    svg.setAttribute('viewBox', `0 ${-ascender} ${totalWidth} ${lineH}`)
-    svg.setAttribute('width',  totalWidth)
-    svg.setAttribute('height', lineH)
-
+    // Return a <g> so play() can merge all lines into one SVG
+    const g = document.createElementNS(svgNS, 'g')
     let x = 0
     const glyphPaths = []
 
@@ -266,14 +278,14 @@ export class StrokeFill {
       p.setAttribute('stroke-linecap',  'round')
       p.style.fill       = bgCol
       p.style.paintOrder = 'stroke fill'
-      svg.appendChild(p)
+      g.appendChild(p)
       glyphPaths.push(p)
 
       x += glyph.advanceWidth * scale
       if (i < glyphs.length - 1) x += font.getKerningValue(glyph, glyphs[i + 1]) * scale
     })
 
-    return { svg, glyphPaths, width: totalWidth }
+    return { g, glyphPaths, width: totalWidth, lineH, ascender }
   }
 
   _animateStrokes(paths, duration, lengths) {
