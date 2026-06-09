@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Universe Has No Obligation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+
+    :root {
+      --bg:      #0b0d10;
+      --ink:     #c9c0aa;
+      --muted:   #5a6070;
+      --accent:  #ffd34e;
+      --line:    #1e2229;
+    }
+
+    html { scroll-behavior: smooth }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Lora', Georgia, serif;
+      font-size: 18px;
+      line-height: 1.85;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout ──────────────────────────────────────────────── */
+    .page {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 80px 28px 160px;
+    }
+
+    /* ── Hero ────────────────────────────────────────────────── */
+    .hero { padding-bottom: 64px; border-bottom: 1px solid var(--line); margin-bottom: 60px }
+
+    .meta {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 11px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 40px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted) }
+
+    .hero-kicker {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    /* ── Heading containers ──────────────────────────────────── */
+    .anim-h {
+      margin-bottom: 32px;
+    }
+    .anim-h.hero-title {
+      margin-bottom: 28px;
+    }
+    /* Prevent layout shift while SVG loads */
+    .anim-h[data-ready="false"] { visibility: hidden }
+
+    /* ── Body text ───────────────────────────────────────────── */
+    p { margin-bottom: 28px; color: var(--ink) }
+
+    .hero .fade-in::first-letter {
+      font-size: 4.2em;
+      line-height: .8;
+      float: left;
+      margin: .04em .12em 0 0;
+      color: var(--accent);
+      font-style: italic;
+    }
+
+    /* ── Section ─────────────────────────────────────────────── */
+    section {
+      margin-top: 72px;
+      padding-top: 8px;
+    }
+
+    /* ── Pull quote ──────────────────────────────────────────── */
+    blockquote {
+      border-left: 2px solid var(--accent);
+      margin: 48px 0;
+      padding: 4px 0 4px 28px;
+      font-size: 1.25em;
+      line-height: 1.55;
+      font-style: italic;
+      color: #e8dfc8;
+    }
+
+    /* ── Divider ─────────────────────────────────────────────── */
+    .ornament {
+      text-align: center;
+      color: var(--muted);
+      margin: 60px 0;
+      letter-spacing: .4em;
+      font-size: 12px;
+    }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    footer {
+      margin-top: 100px;
+      padding-top: 32px;
+      border-top: 1px solid var(--line);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    footer a { color: var(--muted); text-decoration: none }
+    footer a:hover { color: var(--ink) }
+
+    /* ── Fade-in for body content ────────────────────────────── */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: none;
+    }
+  </style>
+</head>
+<body>
+
+<main class="page">
+
+  <!-- ── Hero ─────────────────────────────────────────────────── -->
+  <header class="hero">
+    <p class="hero-kicker">Essay · Physics &amp; Philosophy</p>
+
+    <div class="anim-h hero-title"
+         data-lines="The Universe Has No|Obligation to Make|Sense to You"
+         data-size="64"
+         data-weight="100"
+         data-fill="#c9c0aa"></div>
+
+    <div class="meta">
+      <span>Richard Feynman</span>
+      <span class="meta-dot"></span>
+      <span>12 min read</span>
+      <span class="meta-dot"></span>
+      <span>Physics</span>
+    </div>
+
+    <p class="fade-in">
+      Nature does not owe us comprehension. The laws of physics emerged from a universe that
+      preceded human consciousness by thirteen billion years, and they were not designed with
+      our intuition in mind. The electron does not care whether we find its behaviour strange.
+      The photon does not wait for us to agree on what it is. And yet, despite this, we
+      have learned to predict, to measure, and to describe — even when we cannot truly
+      <em>understand</em>.
+    </p>
+  </header>
+
+  <!-- ── Section 1 ────────────────────────────────────────────── -->
+  <section>
+    <div class="anim-h"
+         data-lines="When Logic Fails Us"
+         data-size="52"
+         data-weight="100"
+         data-fill="#c9c0aa"></div>
+
+    <div class="section-body">
+      <p class="fade-in">
+        Our brains evolved on the savannah, tracking objects at low speeds, judging distances
+        in three dimensions, anticipating trajectories under constant gravity. We are superbly
+        equipped for the world of medium-sized objects moving at modest velocities. But nature,
+        it turns out, does not confine itself to that narrow regime.
+      </p>
+      <p class="fade-in">
+        At the scale of atoms, the familiar categories dissolve. A particle is not
+        here or there — it is described by a probability amplitude that simultaneously
+        occupies every permitted path. The moment we measure it, the wave function collapses.
+        The moment we stop looking, it spreads out again. No metaphor from everyday life
+        cleanly captures this. Not waves on water. Not billiard balls. Not fog.
+      </p>
+
+      <blockquote class="fade-in">
+        "If you think you understand quantum mechanics, you don't understand quantum mechanics."
+      </blockquote>
+
+      <p class="fade-in">
+        This is not a failure of physics. It is a confrontation with the limits of language —
+        a language built for a world that quantum theory now tells us is only approximate.
+      </p>
+    </div>
+  </section>
+
+  <div class="ornament fade-in">· · ·</div>
+
+  <!-- ── Section 2 ────────────────────────────────────────────── -->
+  <section>
+    <div class="anim-h"
+         data-lines="The Quantum Strangeness"
+         data-size="52"
+         data-weight="100"
+         data-fill="#c9c0aa"></div>
+
+    <div class="section-body">
+      <p class="fade-in">
+        Consider the double-slit experiment. A beam of electrons is fired at a barrier with
+        two narrow openings. On the screen behind, an interference pattern accumulates —
+        the signature of waves. But electrons are particles. How does a single particle
+        pass through both slits?
+      </p>
+      <p class="fade-in">
+        The answer quantum mechanics offers is unsatisfying in the most profound way: the
+        electron has no definite position until it is detected. It travels as a probability
+        cloud, interferes with itself, and only upon measurement is forced to commit to
+        a single location. Close one slit — even after the electron has already passed —
+        and the interference vanishes.
+      </p>
+      <p class="fade-in">
+        The universe, it seems, maintains multiple possibilities in superposition and resolves
+        them only at the last possible moment. Whether this represents genuine physical
+        indeterminacy or simply our ignorance of deeper variables remains one of the
+        deepest open questions in science.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Section 3 ────────────────────────────────────────────── -->
+  <section>
+    <div class="anim-h"
+         data-lines="Relativity's Counterintuitive Gift"
+         data-size="48"
+         data-weight="100"
+         data-fill="#c9c0aa"></div>
+
+    <div class="section-body">
+      <p class="fade-in">
+        Special relativity is no less strange. The speed of light is constant for
+        all observers — not just approximately, but exactly. A photon emitted by a
+        source moving toward you at half the speed of light still arrives at
+        <em>c</em>, not 1.5<em>c</em>. Velocity does not add the way a moving train
+        and a thrown ball add.
+      </p>
+      <p class="fade-in">
+        The consequence is that time itself becomes flexible. A clock aboard a
+        fast-moving spacecraft ticks more slowly than an identical clock at rest.
+        Two events that are simultaneous in one reference frame are not simultaneous
+        in another. Space and time are not separate stages on which physics plays out —
+        they are a single fabric, warped by mass and energy, and the geometry
+        of that fabric is gravity.
+      </p>
+
+      <blockquote class="fade-in">
+        "Space tells matter how to move. Matter tells space how to curve."
+      </blockquote>
+    </div>
+  </section>
+
+  <div class="ornament fade-in">· · ·</div>
+
+  <!-- ── Section 4 ────────────────────────────────────────────── -->
+  <section>
+    <div class="anim-h"
+         data-lines="What We Cannot See"
+         data-size="52"
+         data-weight="100"
+         data-fill="#c9c0aa"></div>
+
+    <div class="section-body">
+      <p class="fade-in">
+        The observable universe — the sphere of space from which light has had time to
+        reach us — is approximately 93 billion light-years in diameter. Beyond that
+        horizon, light has not yet reached us since the Big Bang. Whatever lies there
+        is not, for us, observable. It may be infinite. It may contain other patches
+        of space with different physical constants. We cannot know.
+      </p>
+      <p class="fade-in">
+        Dark matter shapes the large-scale structure of the cosmos, accounting for
+        roughly 27 percent of its energy content. It clusters, it gravitates, and it
+        deflects light — and yet it has never been directly detected. Dark energy,
+        comprising another 68 percent, drives the accelerating expansion of space itself,
+        pushing galaxies apart at an ever-increasing rate. Together these invisible
+        components constitute 95 percent of everything, and we do not know what they are.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Section 5 ────────────────────────────────────────────── -->
+  <section>
+    <div class="anim-h"
+         data-lines="A Question Without an Answer"
+         data-size="48"
+         data-weight="100"
+         data-fill="#c9c0aa"></div>
+
+    <div class="section-body">
+      <p class="fade-in">
+        Why is there something rather than nothing? This question sits at the boundary
+        where physics meets philosophy — and likely beyond the reach of either.
+        A theory that explained the origin of the universe would itself require a foundation,
+        and that foundation would require an explanation, and so on without end.
+        At some point, every chain of explanations terminates in a brute fact:
+        something that simply is, for no further reason.
+      </p>
+      <p class="fade-in">
+        The universe does not owe us an explanation. It does not owe us comfort,
+        or symmetry, or narrative closure. What it has given us — through the strange
+        and beautiful machinery of mathematics — is a partial description, accurate enough
+        to build lasers and predict gravitational waves and navigate spacecraft across the
+        solar system. That is, by any measure, extraordinary.
+      </p>
+      <p class="fade-in">
+        The strangeness of quantum mechanics, the warping of spacetime, the invisible dark
+        cosmos — these are not failures of understanding. They are the actual texture of
+        reality pressing back against the limits of a brain that never evolved to grasp them.
+        The correct response is not retreat into comfortable ignorance, but precisely what
+        science demands: look harder, measure more carefully, hold the strangeness without
+        flinching.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Closing ───────────────────────────────────────────────── -->
+  <div class="ornament fade-in">· · ·</div>
+
+  <blockquote class="fade-in" style="margin-top:0">
+    The universe has no obligation to make sense to you. That it does so,
+    even partially, is the greatest gift it never intended to give.
+  </blockquote>
+
+  <footer class="fade-in">
+    <span>motion-titles · scroll animation demo</span>
+    <a href="https://github.com/rahul-ranjan-0806/veritasium-titles" target="_blank" rel="noopener">
+      GitHub ↗
+    </a>
+  </footer>
+
+</main>
+
+<script type="module">
+const CDN = 'https://cdn.jsdelivr.net/gh/rahul-ranjan-0806/veritasium-titles@main/src/StrokeFill.js'
+const BG  = '#0b0d10'
+
+const { StrokeFill } = await import(CDN)
+
+// ── Heading animation on scroll ──────────────────────────────────────────────
+
+const headings = document.querySelectorAll('.anim-h')
+
+// Reserve height to prevent layout shift while font loads
+headings.forEach(el => {
+  const size = +el.dataset.size
+  const lineCount = el.dataset.lines.split('|').length
+  el.style.minHeight = (size * 1.38 * lineCount) + 'px'
+})
+
+const headingObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return
+    const el = entry.target
+    headingObserver.unobserve(el)
+
+    const lines    = el.dataset.lines.split('|')
+    const fontSize = +el.dataset.size
+    const weight   = +(el.dataset.weight ?? 100)
+    const fillColor = el.dataset.fill ?? '#c9c0aa'
+
+    new StrokeFill(el, {
+      lines,
+      font:        'fraunces',
+      weight,
+      fontSize,
+      strokeColor: '#ffd34e',
+      fillColor,
+      strokeWidth: 1,
+      speed:       500,
+      fillDelay:   0,
+      fillDuration: 500,
+      background:  BG,
+    }).play()
+  })
+}, { threshold: 0.25 })
+
+headings.forEach(el => headingObserver.observe(el))
+
+// ── Fade-in for body text on scroll ─────────────────────────────────────────
+
+const fadeEls = document.querySelectorAll('.fade-in')
+
+const fadeObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return
+    entry.target.classList.add('visible')
+    fadeObserver.unobserve(entry.target)
+  })
+}, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' })
+
+fadeEls.forEach(el => fadeObserver.observe(el))
+</script>
+
+</body>
+</html>

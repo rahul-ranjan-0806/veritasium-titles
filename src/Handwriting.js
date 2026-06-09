@@ -18,15 +18,19 @@ const FONT_URLS = {
   shadows:    'https://cdn.jsdelivr.net/gh/akzhy/Vara/fonts/Shadows-Into-Light/shadows-into-light.json',
 }
 
+const _scriptCache = {}
 function _loadScript(src) {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return }
-    const s = document.createElement('script')
-    s.src = src
-    s.onload = resolve
-    s.onerror = () => reject(new Error(`Failed to load script: ${src}`))
-    document.head.appendChild(s)
-  })
+  if (!_scriptCache[src]) {
+    _scriptCache[src] = new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${src}"]`)) { resolve(); return }
+      const s = document.createElement('script')
+      s.src = src
+      s.onload = resolve
+      s.onerror = () => reject(new Error(`Failed to load script: ${src}`))
+      document.head.appendChild(s)
+    })
+  }
+  return _scriptCache[src]
 }
 
 export class Handwriting {
